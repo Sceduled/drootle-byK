@@ -159,7 +159,7 @@ async def process_waha_message(payload: dict):
     except Exception as e:
         logger.error(f"Error processing WAHA message: {e}", exc_info=True)
 
-@router.post("/webhook/waha")
+@router.post("/waha")
 async def waha_webhook(request: Request, background_tasks: BackgroundTasks):
     try:
         payload = await request.json()
