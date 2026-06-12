@@ -3,12 +3,12 @@ Redis client configuration.
 Provides async Redis client using aioredis.
 """
 import logging
-import aioredis
+import redis.asyncio as redis
 from .config import settings
 
 logger = logging.getLogger(__name__)
 
-redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 def get_redis():
     """Return the global Redis client instance."""

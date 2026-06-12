@@ -5,7 +5,7 @@ asyncpg
 alembic
 pydantic-settings
 python-dotenv
-aioredis
+redis
 arq
 openai
 httpx
