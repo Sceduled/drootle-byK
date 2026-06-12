@@ -1,0 +1,250 @@
+"""
+API routes for handling webhooks (e.g. from Make.com, WhatsApp, Voice Providers).
+"""
+from fastapi import APIRouter, Header, HTTPException, Depends, Request, Response, Query
+from pydantic import BaseModel
+from typing import Optional
+import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from arq import create_pool
+from arq.connections import RedisSettings
+import hmac
+import hashlib
+
+from core.config import settings
+from core.database import get_db
+from core.models import Lead, Conversation
+from core.redis import get_redis
+from utils.phone import normalize_phone
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+class NewLeadPayload(BaseModel):
+    name: Optional[str] = None
+    phone: str
+    email: Optional[str] = None
+    company: Optional[str] = None
+    source_ad: Optional[str] = None
+    sheet_row: Optional[int] = None
+
+_arq_pool = None
+
+async def get_arq_pool():
+    global _arq_pool
+    if _arq_pool is None:
+        _arq_pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
+    return _arq_pool
+
+from core.limiter import limiter
+
+@router.post("/new-lead")
+@limiter.limit("100/minute")
+async def new_lead(
+    request: Request,
+    payload: NewLeadPayload,
+    x_webhook_secret: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    if not x_webhook_secret or x_webhook_secret != settings.WEBHOOK_SECRET:
+        logger.warning("Unauthorized webhook access attempt")
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        norm_phone = normalize_phone(payload.phone)
+    except ValueError as e:
+        logger.warning(f"Invalid phone number '{payload.phone}': {e}")
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+
+    result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
+    lead = result.scalars().first()
+
+    if lead:
+        logger.info(f"Existing lead found, resuming. lead_id: {lead.id}")
+    else:
+        lead = Lead(
+            name=payload.name,
+            phone=norm_phone,
+            email=payload.email,
+            company_name=payload.company,
+            source_ad=payload.source_ad,
+            sheet_row_index=payload.sheet_row
+        )
+        db.add(lead)
+        await db.commit()
+        await db.refresh(lead)
+        logger.info(f"New lead created. lead_id: {lead.id}")
+
+    try:
+        arq_pool = await get_arq_pool()
+        await arq_pool.enqueue_job('send_opening_message', str(lead.id))
+    except Exception as e:
+        logger.error(f"Failed to enqueue ARQ job for lead_id: {lead.id}. Error: {e}")
+
+    return {"status": "received", "lead_id": str(lead.id)}
+
+
+@router.get("/whatsapp")
+async def verify_whatsapp(
+    hub_mode: str = Query(None, alias="hub.mode"),
+    hub_verify_token: str = Query(None, alias="hub.verify_token"),
+    hub_challenge: str = Query(None, alias="hub.challenge")
+):
+    if hub_mode == "subscribe" and hub_verify_token == settings.META_WEBHOOK_VERIFY_TOKEN:
+        return Response(content=hub_challenge, media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+@router.post("/whatsapp")
+async def receive_whatsapp(request: Request, db: AsyncSession = Depends(get_db)):
+    signature = request.headers.get("X-Hub-Signature-256")
+    if not signature:
+        raise HTTPException(status_code=403, detail="Missing signature")
+        
+    body = await request.body()
+    expected_sig = hmac.new(
+        settings.META_APP_SECRET.encode(),
+        body,
+        hashlib.sha256
+    ).hexdigest()
+    
+    received_sig = signature.replace("sha256=", "")
+    if not hmac.compare_digest(expected_sig, received_sig):
+        logger.warning("Invalid Meta webhook signature")
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
+    payload = await request.json()
+    try:
+        entry = payload.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
+        messages = value.get("messages", [])
+        
+        if not messages:
+            return {"status": "ok"}
+            
+        message = messages[0]
+        phone = message.get("from")
+        text_body = message.get("text", {}).get("body", "")
+        
+        if phone and text_body:
+            await handle_inbound_message(phone, text_body, db)
+    except Exception as e:
+        logger.error(f"Error processing Meta webhook: {e}")
+        
+    return {"status": "ok"}
+
+@router.post("/whatsapp-owa")
+async def receive_whatsapp_owa(request: Request, db: AsyncSession = Depends(get_db)):
+    payload = await request.json()
+    try:
+        phone = payload.get("from") or payload.get("sender")
+        message_text = payload.get("body") or payload.get("text", "")
+        
+        if phone and '@' in phone:
+            phone = phone.split('@')[0]
+            
+        if phone and message_text:
+            await handle_inbound_message(phone, message_text, db)
+    except Exception as e:
+        logger.error(f"Error processing OpenWA webhook: {e}")
+        
+    return {"status": "ok"}
+
+async def handle_inbound_message(phone: str, message_text: str, db: AsyncSession):
+    try:
+        norm_phone = normalize_phone(phone)
+    except ValueError as e:
+        logger.warning(f"Invalid inbound phone {phone}: {e}")
+        return
+
+    result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
+    lead = result.scalars().first()
+
+    if not lead:
+        lead = Lead(phone=norm_phone, conv_status="in_progress")
+        db.add(lead)
+        await db.commit()
+        await db.refresh(lead)
+        logger.info(f"Created ghost lead for inbound phone {norm_phone}, lead_id: {lead.id}")
+        
+    redis = get_redis()
+    buffer_key = f"buffer:{norm_phone}"
+    await redis.rpush(buffer_key, message_text)
+    await redis.expire(buffer_key, 4)
+    
+    processing_key = f"processing:{norm_phone}"
+    is_processing = await redis.exists(processing_key)
+    
+    if is_processing:
+        return
+        
+    await redis.setex(processing_key, 10, "1")
+    arq_pool = await get_arq_pool()
+    await arq_pool.enqueue_job('process_buffered_message', norm_phone, _defer_by=4)
+
+# --- VOICE WEBHOOKS ---
+
+class VoiceCallbackPayload(BaseModel):
+    call_id: Optional[str] = None
+    phone: str
+    transcript: str
+    duration: Optional[int] = None
+    duration_seconds: Optional[int] = None
+    extracted_data: Optional[dict] = None
+
+@router.post("/bolna")
+async def bolna_callback(payload: VoiceCallbackPayload, db: AsyncSession = Depends(get_db)):
+    await handle_voice_callback(payload, db)
+    return {"status": "ok"}
+
+@router.post("/pipecat")
+async def pipecat_callback(payload: VoiceCallbackPayload, db: AsyncSession = Depends(get_db)):
+    await handle_voice_callback(payload, db)
+    return {"status": "ok"}
+
+async def handle_voice_callback(payload: VoiceCallbackPayload, db: AsyncSession):
+    try:
+        norm_phone = normalize_phone(payload.phone)
+    except ValueError:
+        return
+        
+    result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
+    lead = result.scalars().first()
+    if not lead: return
+    
+    transcript_msg = f"[VOICE CALL TRANSCRIPT]\n{payload.transcript}"
+    db.add(Conversation(lead_id=lead.id, role="system", content=transcript_msg))
+    await db.commit()
+    
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.lead_id == lead.id)
+        .order_by(Conversation.created_at.asc())
+    )
+    history = result.scalars().all()
+    
+    from services.gpt import process_message
+    _, extraction = await process_message(lead, history, "", is_voice=True)
+    
+    if extraction.get('industry') is not None: lead.industry = extraction['industry']
+    if extraction.get('target_markets') is not None: lead.target_markets = extraction['target_markets']
+    if extraction.get('monthly_ad_budget') is not None: lead.monthly_ad_budget = extraction['monthly_ad_budget']
+    if extraction.get('ads_experience') is not None: lead.ads_experience = extraction['ads_experience']
+    if extraction.get('pain_point') is not None: lead.pain_point = extraction['pain_point']
+    if extraction.get('urgency') is not None: lead.urgency = extraction['urgency']
+    if extraction.get('preferred_call_time') is not None: lead.preferred_call_time = extraction['preferred_call_time']
+    if extraction.get('lead_score') is not None: lead.lead_score = extraction['lead_score']
+    
+    new_status = extraction.get('conv_status')
+    if new_status:
+        if lead.conv_status not in ["qualified", "closed"]:
+            lead.conv_status = new_status
+            
+    await db.commit()
+    
+    arq_pool = await get_arq_pool()
+    if new_status == "qualified" and lead.conv_status == "qualified":
+        await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
+    elif new_status == "escalate" and lead.conv_status == "escalate":
+        await arq_pool.enqueue_job('escalate_to_sales', str(lead.id))

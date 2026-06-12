@@ -1,0 +1,360 @@
+"""
+Background tasks (e.g. using arq) for async processing.
+"""
+import logging
+import asyncio
+import functools
+import traceback
+from datetime import datetime, timedelta, timezone
+from arq.connections import RedisSettings
+from arq.cron import cron
+from sqlalchemy import select, text
+
+from core.config import settings
+from core.database import AsyncSessionLocal
+from core.models import Lead, Conversation, NotificationLog
+from services.whatsapp import send_message
+from services.gpt import process_message, call_gpt_mini
+from services.sheets import update_lead_row
+from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation
+from services.bolna import trigger_outbound_call as _trigger_outbound_bolna
+from services.pipecat_client import trigger_pipecat_call as _trigger_pipecat_call
+
+logger = logging.getLogger(__name__)
+
+def safe_task(func):
+    @functools.wraps(func)
+    async def wrapper(ctx, *args, **kwargs):
+        try:
+            return await func(ctx, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Task {func.__name__} failed: {e}\n{traceback.format_exc()}")
+            # Do NOT re-raise to prevent infinite retries by ARQ
+    return wrapper
+
+@safe_task
+async def dispatch_voice_call(ctx, lead_id: str):
+    if not settings.VOICE_ENABLED:
+        logger.info(f"[{lead_id}] voice disabled, skipping call")
+        return
+        
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        
+    provider = settings.VOICE_PROVIDER
+    if provider == "bolna":
+        await _trigger_outbound_bolna(lead)
+    elif provider == "pipecat":
+        await _trigger_pipecat_call(lead)
+    else:
+        logger.error(f"[{lead_id}] unknown voice provider: {provider}")
+
+@safe_task
+async def send_opening_message(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Starting send_opening_message task")
+    
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        
+        if not lead:
+            logger.error(f"[{lead_id}] Lead not found")
+            return
+            
+        display_name = lead.name if lead.name else "there"
+        opening_message = (
+            f"Hi {display_name}! 👋 I'm Maya, from the Drootle team.\n"
+            f"You recently reached out about scaling your business with ads.\n"
+            f"I just have a few quick questions so Darshaan's team is\n"
+            f"fully prepped before they speak with you.\n"
+            f"Takes 2 minutes — shall we? 😊"
+        )
+        
+        success = await send_message(lead.phone, opening_message)
+        
+        if success:
+            db.add(Conversation(lead_id=lead.id, role="assistant", content=opening_message))
+            lead.conv_status = "in_progress"
+            await db.commit()
+            logger.info(f"[{lead_id}] Opening message sent successfully to phone: {lead.phone}")
+        else:
+            logger.error(f"[{lead_id}] Failed to send opening message to phone: {lead.phone}")
+
+@safe_task
+async def process_buffered_message(ctx, phone: str):
+    logger.info(f"Processing buffered messages for {phone}")
+    from core.redis import get_redis
+    redis = get_redis()
+    buffer_key = f"buffer:{phone}"
+    
+    messages = await redis.lrange(buffer_key, 0, -1)
+    await redis.delete(buffer_key)
+    
+    if not messages:
+        await redis.delete(f"processing:{phone}")
+        return
+        
+    combined = "\n".join(messages)
+    
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.phone == phone))
+        lead = result.scalars().first()
+        
+        if not lead:
+            await redis.delete(f"processing:{phone}")
+            return
+            
+        result = await db.execute(
+            select(Conversation)
+            .where(Conversation.lead_id == lead.id)
+            .order_by(Conversation.created_at.asc())
+        )
+        history = result.scalars().all()
+        
+        reply, extraction = await process_message(lead, history, combined)
+        
+        db.add(Conversation(lead_id=lead.id, role="user", content=combined))
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=reply))
+        
+        if extraction.get('industry') is not None: lead.industry = extraction['industry']
+        if extraction.get('target_markets') is not None: lead.target_markets = extraction['target_markets']
+        if extraction.get('monthly_ad_budget') is not None: lead.monthly_ad_budget = extraction['monthly_ad_budget']
+        if extraction.get('ads_experience') is not None: lead.ads_experience = extraction['ads_experience']
+        if extraction.get('pain_point') is not None: lead.pain_point = extraction['pain_point']
+        if extraction.get('urgency') is not None: lead.urgency = extraction['urgency']
+        if extraction.get('preferred_call_time') is not None: lead.preferred_call_time = extraction['preferred_call_time']
+        
+        if extraction.get('lead_score') is not None: 
+            lead.lead_score = extraction['lead_score']
+        else:
+            lead.lead_score = "WARM"
+            logger.warning(f"[{lead.id}] lead_score missing, defaulting to WARM")
+        
+        new_status = extraction.get('conv_status')
+        if new_status:
+            if lead.conv_status not in ["qualified", "closed"]:
+                lead.conv_status = new_status
+        
+        await db.commit()
+        await send_message(phone, reply)
+        await redis.delete(f"processing:{phone}")
+        
+        arq_pool = ctx.get('redis')
+        if new_status == "qualified" and lead.conv_status == "qualified":
+            await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
+        elif new_status == "escalate" and lead.conv_status == "escalate":
+            await arq_pool.enqueue_job('escalate_to_sales', str(lead.id))
+                
+        logger.info(f"[{lead.id}] Exchange summary: Received {len(messages)} messages. Replied and updated lead.")
+
+@safe_task
+async def check_stalled_leads(ctx):
+    logger.info("Running check_stalled_leads cron job")
+    arq_pool = ctx.get('redis')
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Lead)
+            .where(Lead.conv_status == 'in_progress')
+            .where(Lead.updated_at < text("NOW() - INTERVAL '24 hours'"))
+        )
+        stalled_leads = result.scalars().all()
+        
+        for lead in stalled_leads:
+            check_res = await db.execute(
+                select(Conversation)
+                .where(Conversation.lead_id == lead.id)
+                .where(Conversation.role == 'assistant')
+                .where(Conversation.content.like('%just checking in%'))
+                .where(Conversation.created_at > text("NOW() - INTERVAL '24 hours'"))
+            )
+            already_sent = check_res.scalars().first()
+            
+            if already_sent:
+                continue
+                
+            name = lead.name if lead.name else "there"
+            msg = (f"Hey {name}! Just checking in — still happy to help "
+                   f"you connect with Darshaan's team at Drootle 😊 "
+                   f"Takes 2 minutes when you're ready!")
+            
+            await send_message(lead.phone, msg)
+            db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+            await db.commit()
+            logger.info(f"[{lead.id}] Sent 24h stalled checking in message")
+            
+        result_48h = await db.execute(
+            select(Lead)
+            .where(Lead.conv_status == 'in_progress')
+            .where(Lead.updated_at < text("NOW() - INTERVAL '48 hours'"))
+        )
+        abandoned_leads = result_48h.scalars().all()
+        
+        for lead in abandoned_leads:
+            lead.conv_status = 'stalled'
+            db.add(lead)
+            await db.commit()
+            await arq_pool.enqueue_job('notify_sales_stalled_task', str(lead.id))
+            logger.info(f"[{lead.id}] Marked lead as stalled after 48h")
+            
+        result_2h = await db.execute(
+            select(Lead)
+            .where(Lead.conv_status == 'in_progress')
+            .where(Lead.updated_at < text("NOW() - INTERVAL '2 hours'"))
+            .where(Lead.updated_at > text("NOW() - INTERVAL '24 hours'"))
+        )
+        stalled_2h_leads = result_2h.scalars().all()
+        for lead in stalled_2h_leads:
+            if settings.VOICE_ENABLED and settings.VOICE_TRIGGER == "no_reply_2h":
+                if lead.call_count == 0:
+                    await arq_pool.enqueue_job('dispatch_voice_call', str(lead.id))
+                    logger.info(f"[{lead.id}] Dispatched voice call after 2h no-reply")
+
+@safe_task
+async def post_qualification_actions(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Starting post_qualification_actions")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        
+    async def safe_run(coro):
+        try:
+            await coro
+        except Exception as e:
+            logger.error(f"[{lead_id}] Error in post_qualification_actions sub-task: {e}\n{traceback.format_exc()}")
+            
+    await asyncio.gather(
+        safe_run(update_lead_row(lead)),
+        safe_run(notify_sales_qualification(lead)),
+        safe_run(ctx['redis'].enqueue_job('schedule_call_reminder', str(lead.id)))
+    )
+    logger.info(f"[{lead_id}] post qualification actions complete")
+
+@safe_task
+async def schedule_call_reminder(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Starting schedule_call_reminder")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        
+        if not lead.preferred_call_time:
+            logger.info(f"[{lead_id}] No preferred_call_time, skipping reminder")
+            return
+            
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(ist).strftime('%A %d %B %Y')
+        prompt = f"""
+Today is {now_ist}.
+The lead said their preferred call time is: 
+"{lead.preferred_call_time}"
+Return ONLY a datetime string in ISO 8601 format with 
+timezone offset +05:30. Nothing else.
+Example output: 2024-01-15T18:00:00+05:30
+If you cannot parse it, return: UNABLE_TO_PARSE
+"""
+        response = await call_gpt_mini(prompt)
+        if response == "UNABLE_TO_PARSE":
+            logger.warning(f"[{lead_id}] Unable to parse preferred call time: {lead.preferred_call_time}")
+            return
+            
+        try:
+            parsed_datetime = datetime.fromisoformat(response)
+        except ValueError:
+            logger.warning(f"[{lead_id}] Invalid ISO format from GPT: {response}")
+            return
+            
+        reminder_time = parsed_datetime - timedelta(minutes=30)
+        arq_pool = ctx.get('redis')
+        
+        if reminder_time < datetime.now(parsed_datetime.tzinfo):
+            await arq_pool.enqueue_job('send_call_reminder', str(lead.id))
+        else:
+            await arq_pool.enqueue_job('send_call_reminder', str(lead.id), _defer_until=reminder_time)
+            
+        lead.call_booked_at = parsed_datetime
+        await db.commit()
+        logger.info(f"[{lead_id}] reminder scheduled for {reminder_time}")
+
+@safe_task
+async def send_call_reminder(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Starting send_call_reminder")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead or lead.call_reminder_sent:
+            return
+            
+        name = lead.name if lead.name else "there"
+        lead_msg = f"Hi {name}! Just a reminder — Darshaan's team will be calling you at {lead.preferred_call_time} today. Speak soon! 🙌"
+        await send_message(lead.phone, lead_msg)
+        
+        score_emoji = {"HOT": "🔴", "WARM": "🟡", "COLD": "🔵"}.get(lead.lead_score, "⚪")
+        sales_msg = (f"📞 CALL NOW — {name} | {lead.company_name or 'Unknown'}\n"
+                     f"{score_emoji} {lead.lead_score or 'UNSCORED'}\n"
+                     f"Industry: {lead.industry or 'Unknown'} | Budget: {lead.monthly_ad_budget or 'Unknown'}\n"
+                     f"Pain: {lead.pain_point or 'Unknown'}\n"
+                     f"Phone: {lead.phone}")
+
+        numbers = settings.sales_team_numbers
+        for number in numbers:
+            success = await send_message(number, sales_msg)
+            status = "sent" if success else "failed"
+            db.add(NotificationLog(lead_id=lead_id, type="lead_reminder", recipient=number, message_preview=sales_msg[:100], status=status))
+            db.add(NotificationLog(lead_id=lead_id, type="salesperson_reminder", recipient=number, message_preview=sales_msg[:100], status=status))
+            
+        lead.call_reminder_sent = True
+        await db.commit()
+        logger.info(f"[{lead_id}] Call reminders sent")
+        
+    if settings.VOICE_ENABLED and settings.VOICE_TRIGGER == "reminder":
+        arq_pool = ctx.get('redis')
+        await arq_pool.enqueue_job('dispatch_voice_call', lead_id)
+        logger.info(f"[{lead_id}] Dispatched voice call for reminder")
+
+@safe_task
+async def notify_sales_stalled_task(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing notify_sales_stalled_task")
+    await notify_sales_stalled(lead_id)
+
+@safe_task
+async def notify_sales_qualification_task(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing notify_sales_qualification_task")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        await notify_sales_qualification(lead)
+
+@safe_task
+async def escalate_to_sales(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing escalate_to_sales")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        
+        await notify_sales_escalation(lead_id)
+        lead.conv_status = "escalated"
+        await db.commit()
+
+class WorkerSettings:
+    redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
+    functions = [
+        send_opening_message,
+        process_buffered_message,
+        post_qualification_actions,
+        schedule_call_reminder,
+        send_call_reminder,
+        escalate_to_sales,
+        notify_sales_stalled_task,
+        notify_sales_qualification_task,
+        dispatch_voice_call
+    ]
+    cron_jobs = [
+        cron(check_stalled_leads, hour={0, 6, 12, 18})
+    ]
+    max_jobs = 10
+    job_timeout = 60
