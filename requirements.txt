@@ -16,3 +16,4 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 slowapi
+psycopg2-binary

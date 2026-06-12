@@ -9,10 +9,20 @@ from sqlalchemy import text
 
 from .config import settings
 
+import re
+
 logger = logging.getLogger(__name__)
 
+database_url = settings.DATABASE_URL
+# Replace postgresql:// or postgres:// with postgresql+asyncpg://
+database_url = re.sub(
+    r'^postgres(ql)?://', 
+    'postgresql+asyncpg://', 
+    database_url
+)
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    database_url,
     pool_size=10,
     max_overflow=20,
     echo=False
