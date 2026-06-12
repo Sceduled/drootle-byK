@@ -134,22 +134,41 @@ async def receive_whatsapp(request: Request, db: AsyncSession = Depends(get_db))
         
     return {"status": "ok"}
 
-@router.post("/whatsapp-owa")
-async def receive_whatsapp_owa(request: Request, db: AsyncSession = Depends(get_db)):
-    payload = await request.json()
+from fastapi import BackgroundTasks
+from core.database import AsyncSessionLocal
+
+async def process_waha_message(payload: dict):
     try:
-        phone = payload.get("from") or payload.get("sender")
-        message_text = payload.get("body") or payload.get("text", "")
+        logger.info(f"Processing WAHA payload: {payload}")
         
-        if phone and '@' in phone:
+        # Handle WAHA/OpenWA payload variations
+        phone = payload.get("from") or payload.get("sender")
+        if not phone and "payload" in payload:
+            phone = payload["payload"].get("from")
+            
+        message_text = payload.get("body") or payload.get("text", "")
+        if not message_text and "payload" in payload:
+            message_text = payload["payload"].get("body", "")
+        
+        if phone and isinstance(phone, str) and '@' in phone:
             phone = phone.split('@')[0]
             
         if phone and message_text:
-            await handle_inbound_message(phone, message_text, db)
+            async with AsyncSessionLocal() as db:
+                await handle_inbound_message(phone, message_text, db)
     except Exception as e:
-        logger.error(f"Error processing OpenWA webhook: {e}")
-        
-    return {"status": "ok"}
+        logger.error(f"Error processing WAHA message: {e}", exc_info=True)
+
+@router.post("/webhook/waha")
+async def waha_webhook(request: Request, background_tasks: BackgroundTasks):
+    try:
+        payload = await request.json()
+        logger.info(f"WAHA webhook received: {payload}")
+        background_tasks.add_task(process_waha_message, payload)
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"WAHA webhook error: {e}", exc_info=True)
+        return {"status": "ok"}
 
 async def handle_inbound_message(phone: str, message_text: str, db: AsyncSession):
     try:
