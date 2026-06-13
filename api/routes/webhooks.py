@@ -172,17 +172,27 @@ async def process_waha_message(payload: dict):
         logger.error(f"Error processing WAHA message: {e}", exc_info=True)
         raise
 
+last_payloads = []
+
 @router.post("/waha")
 async def waha_webhook(request: Request):
+    global last_payloads
     try:
         payload = await request.json()
         logger.info(f"WAHA webhook received: {payload}")
-        # Await directly to catch errors instead of using background_tasks
+        last_payloads.insert(0, payload)
+        if len(last_payloads) > 10:
+            last_payloads.pop()
+            
         await process_waha_message(payload)
         return {"status": "ok", "message": "processed"}
     except Exception as e:
         logger.error(f"WAHA webhook error: {e}", exc_info=True)
         return {"status": "error", "error": str(e)}
+
+@router.get("/debug/waha")
+async def get_waha_debug():
+    return {"last_payloads": last_payloads}
 
 async def handle_inbound_message(phone: str, message_text: str):
     """Process inbound message directly — no ARQ worker needed."""
