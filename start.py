@@ -67,7 +67,7 @@ def main():
         from main import app
         logger.info(f"  main app OK, routes={len(app.routes)}")
         
-        port = int(os.environ.get("PORT", 8080))
+        port = int(os.environ.get("PORT", 3000))
         logger.info(f"Starting uvicorn on port {port} (PID {os.getpid()})...")
         sys.stdout.flush()
         
