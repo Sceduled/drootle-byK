@@ -19,8 +19,8 @@ class WhatsAppClient:
     async def send_message(self, phone: str, message: str) -> bool:
         if self.provider in ("meta", "vobiz"):
             return await self._send_meta(phone, message)
-        elif self.provider == "openwa":
-            return await self._send_openwa(phone, message)
+        elif self.provider in ("openwa", "waha"):
+            return await self._send_waha(phone, message)
         else:
             logger.error(f"Unknown WhatsApp provider: {self.provider}")
             return False
@@ -45,18 +45,26 @@ class WhatsAppClient:
         }
         return await self._execute_with_retry(url, headers, payload, "meta")
 
-    async def _send_openwa(self, phone: str, message: str) -> bool:
+    async def _send_waha(self, phone: str, message: str) -> bool:
+        """Send via WAHA (WhatsApp HTTP API) - correct API format"""
         base_url = self.openwa_url.rstrip('/')
         url = f"{base_url}/api/sendText"
-        headers = {
-            "Authorization": f"Bearer {self.openwa_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Content-Type": "application/json"}
+        if self.openwa_key:
+            headers["Authorization"] = f"Bearer {self.openwa_key}"
+
+        # WAHA expects chatId in format: 919876543210@s.whatsapp.net
+        # Strip leading + if present
+        clean_phone = phone.lstrip('+')
+        chat_id = f"{clean_phone}@s.whatsapp.net"
+
         payload = {
-            "phone": phone,
-            "message": message
+            "chatId": chat_id,
+            "text": message,
+            "session": "default"
         }
-        return await self._execute_with_retry(url, headers, payload, "openwa")
+        logger.info(f"Sending WAHA message to {chat_id} via {url}")
+        return await self._execute_with_retry(url, headers, payload, "waha")
 
     async def _execute_with_retry(self, url: str, headers: dict, payload: dict, provider: str) -> bool:
         backoffs = [1, 2, 4]
