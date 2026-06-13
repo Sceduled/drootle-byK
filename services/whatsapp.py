@@ -54,9 +54,9 @@ class WhatsAppClient:
         if self.waha_key:
             headers["Authorization"] = f"Bearer {self.waha_key}"
 
-        # WAHA expects chatId in format: 919876543210@s.whatsapp.net
+        # WAHA expects chatId in format: 919876543210@c.us
         clean_phone = phone.lstrip('+')
-        chat_id = f"{clean_phone}@s.whatsapp.net"
+        chat_id = f"{clean_phone}@c.us"
 
         payload = {
             "chatId": chat_id,
