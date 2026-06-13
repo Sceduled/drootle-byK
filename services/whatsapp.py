@@ -13,8 +13,9 @@ class WhatsAppClient:
         self.provider = settings.WHATSAPP_PROVIDER
         self.meta_token = settings.META_WHATSAPP_TOKEN
         self.meta_phone_id = settings.META_PHONE_NUMBER_ID
-        self.openwa_url = settings.OPENWA_URL
-        self.openwa_key = settings.OPENWA_API_KEY
+        self.waha_url = settings.WAHA_URL
+        self.waha_key = settings.WAHA_API_KEY
+        self.waha_session = settings.WAHA_SESSION
 
     async def send_message(self, phone: str, message: str) -> bool:
         if self.provider in ("meta", "vobiz"):
@@ -47,21 +48,20 @@ class WhatsAppClient:
 
     async def _send_waha(self, phone: str, message: str) -> bool:
         """Send via WAHA (WhatsApp HTTP API) - correct API format"""
-        base_url = self.openwa_url.rstrip('/')
+        base_url = self.waha_url.rstrip('/')
         url = f"{base_url}/api/sendText"
         headers = {"Content-Type": "application/json"}
-        if self.openwa_key:
-            headers["Authorization"] = f"Bearer {self.openwa_key}"
+        if self.waha_key:
+            headers["Authorization"] = f"Bearer {self.waha_key}"
 
         # WAHA expects chatId in format: 919876543210@s.whatsapp.net
-        # Strip leading + if present
         clean_phone = phone.lstrip('+')
         chat_id = f"{clean_phone}@s.whatsapp.net"
 
         payload = {
             "chatId": chat_id,
             "text": message,
-            "session": "default"
+            "session": self.waha_session
         }
         logger.info(f"Sending WAHA message to {chat_id} via {url}")
         return await self._execute_with_retry(url, headers, payload, "waha")

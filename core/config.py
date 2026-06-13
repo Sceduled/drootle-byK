@@ -17,13 +17,14 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o"
 
     # WhatsApp
-    WHATSAPP_PROVIDER: str = "meta"  # "meta" or "openwa"
+    WHATSAPP_PROVIDER: str = "waha"
     META_WHATSAPP_TOKEN: str = ""
     META_PHONE_NUMBER_ID: str = ""
     META_WEBHOOK_VERIFY_TOKEN: str = ""
     META_APP_SECRET: str = ""
-    OPENWA_URL: str = ""
-    OPENWA_API_KEY: str = ""
+    WAHA_URL: str = ""
+    WAHA_API_KEY: str = ""
+    WAHA_SESSION: str = "default"
 
     # Google Sheets
     GOOGLE_SHEET_ID: str = ""
