@@ -218,14 +218,12 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
     await redis.rpush(buffer_key, message_text)
     await redis.expire(buffer_key, 10)
 
-    # If already being processed, just buffer and return
-    is_processing = await redis.exists(processing_key)
-    if is_processing:
+    # Acquire processing lock atomically
+    # If the key already exists (nx=True fails), another request is processing
+    acquired = await redis.set(processing_key, "1", ex=30, nx=True)
+    if not acquired:
         logger.info(f"Already processing {norm_phone}, buffered message")
         return
-
-    # Acquire processing lock
-    await redis.setex(processing_key, 30, "1")
 
     try:
         # Wait for rapid-fire messages to accumulate
