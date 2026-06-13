@@ -149,6 +149,8 @@ async def process_waha_message(payload: dict):
         if not phone and "payload" in payload:
             phone = payload["payload"].get("from")
 
+        original_jid = phone
+
         # WAHA NOWEB sometimes uses @lid, the real phone is in remoteJidAlt
         if "payload" in payload:
             alt_phone = payload["payload"].get("_data", {}).get("key", {}).get("remoteJidAlt")
@@ -171,8 +173,8 @@ async def process_waha_message(payload: dict):
             logger.warning(f"Missing phone or message_text — phone={phone!r} text={message_text!r}")
             return
 
-        logger.info(f"Inbound from {phone}: {message_text!r}")
-        await handle_inbound_message(phone, message_text)
+        logger.info(f"Inbound from {phone} (JID: {original_jid}): {message_text!r}")
+        await handle_inbound_message(phone, message_text, reply_to_jid=original_jid)
 
     except Exception as e:
         logger.error(f"Error processing WAHA message: {e}", exc_info=True)
@@ -200,7 +202,7 @@ async def waha_webhook(request: Request):
 async def get_waha_debug():
     return {"last_payloads": last_payloads}
 
-async def handle_inbound_message(phone: str, message_text: str):
+async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: str = None):
     """Process inbound message directly — no ARQ worker needed."""
     try:
         norm_phone = normalize_phone(phone)
@@ -280,7 +282,8 @@ async def handle_inbound_message(phone: str, message_text: str):
             await db.commit()
 
         # Send reply via WhatsApp
-        success = await wa_send(norm_phone, reply)
+        target_jid = reply_to_jid or norm_phone
+        success = await wa_send(target_jid, reply)
         logger.info(f"[{lead.id}] Reply sent: {success}")
 
     except Exception as e:
