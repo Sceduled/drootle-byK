@@ -134,28 +134,40 @@ async def receive_whatsapp(request: Request, db: AsyncSession = Depends(get_db))
         
     return {"status": "ok"}
 
+import asyncio
 from fastapi import BackgroundTasks
 from core.database import AsyncSessionLocal
+from services.gpt import process_message
+from services.whatsapp import send_message as wa_send
 
 async def process_waha_message(payload: dict):
     try:
         logger.info(f"Processing WAHA payload: {payload}")
-        
-        # Handle WAHA/OpenWA payload variations
+
+        # Parse phone + text from WAHA's various event formats
         phone = payload.get("from") or payload.get("sender")
         if not phone and "payload" in payload:
             phone = payload["payload"].get("from")
-            
+
         message_text = payload.get("body") or payload.get("text", "")
         if not message_text and "payload" in payload:
             message_text = payload["payload"].get("body", "")
-        
+
+        # Skip if this is an outgoing (fromMe) message
+        if payload.get("fromMe") or (payload.get("payload") or {}).get("fromMe"):
+            logger.info("Skipping outgoing (fromMe) message")
+            return
+
         if phone and isinstance(phone, str) and '@' in phone:
             phone = phone.split('@')[0]
-            
-        if phone and message_text:
-            async with AsyncSessionLocal() as db:
-                await handle_inbound_message(phone, message_text, db)
+
+        if not phone or not message_text:
+            logger.warning(f"Missing phone or message_text — phone={phone!r} text={message_text!r}")
+            return
+
+        logger.info(f"Inbound from {phone}: {message_text!r}")
+        await handle_inbound_message(phone, message_text)
+
     except Exception as e:
         logger.error(f"Error processing WAHA message: {e}", exc_info=True)
 
@@ -170,37 +182,93 @@ async def waha_webhook(request: Request, background_tasks: BackgroundTasks):
         logger.error(f"WAHA webhook error: {e}", exc_info=True)
         return {"status": "ok"}
 
-async def handle_inbound_message(phone: str, message_text: str, db: AsyncSession):
+async def handle_inbound_message(phone: str, message_text: str):
+    """Process inbound message directly — no ARQ worker needed."""
     try:
         norm_phone = normalize_phone(phone)
     except ValueError as e:
         logger.warning(f"Invalid inbound phone {phone}: {e}")
         return
 
-    result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
-    lead = result.scalars().first()
-
-    if not lead:
-        lead = Lead(phone=norm_phone, conv_status="in_progress")
-        db.add(lead)
-        await db.commit()
-        await db.refresh(lead)
-        logger.info(f"Created ghost lead for inbound phone {norm_phone}, lead_id: {lead.id}")
-        
     redis = get_redis()
     buffer_key = f"buffer:{norm_phone}"
-    await redis.rpush(buffer_key, message_text)
-    await redis.expire(buffer_key, 4)
-    
     processing_key = f"processing:{norm_phone}"
+
+    # Push to buffer
+    await redis.rpush(buffer_key, message_text)
+    await redis.expire(buffer_key, 10)
+
+    # If already being processed, just buffer and return
     is_processing = await redis.exists(processing_key)
-    
     if is_processing:
+        logger.info(f"Already processing {norm_phone}, buffered message")
         return
-        
-    await redis.setex(processing_key, 10, "1")
-    arq_pool = await get_arq_pool()
-    await arq_pool.enqueue_job('process_buffered_message', norm_phone, _defer_by=4)
+
+    # Acquire processing lock
+    await redis.setex(processing_key, 30, "1")
+
+    try:
+        # Wait for rapid-fire messages to accumulate
+        await asyncio.sleep(4)
+
+        # Drain buffer
+        messages = await redis.lrange(buffer_key, 0, -1)
+        await redis.delete(buffer_key)
+
+        if not messages:
+            return
+
+        combined = "\n".join(m if isinstance(m, str) else m.decode() for m in messages)
+        logger.info(f"Processing {len(messages)} buffered message(s) for {norm_phone}: {combined!r}")
+
+        async with AsyncSessionLocal() as db:
+            # Find or create lead
+            result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
+            lead = result.scalars().first()
+
+            if not lead:
+                lead = Lead(phone=norm_phone, conv_status="in_progress")
+                db.add(lead)
+                await db.commit()
+                await db.refresh(lead)
+                logger.info(f"Created ghost lead for {norm_phone}, lead_id: {lead.id}")
+
+            # Fetch history
+            result = await db.execute(
+                select(Conversation)
+                .where(Conversation.lead_id == lead.id)
+                .order_by(Conversation.created_at.asc())
+            )
+            history = result.scalars().all()
+
+            # GPT reply
+            reply, extraction = await process_message(lead, history, combined)
+            logger.info(f"[{lead.id}] GPT reply: {reply!r}")
+
+            # Persist conversation
+            db.add(Conversation(lead_id=lead.id, role="user", content=combined))
+            db.add(Conversation(lead_id=lead.id, role="assistant", content=reply))
+
+            # Update lead fields
+            for field in ['industry','target_markets','monthly_ad_budget','ads_experience','pain_point','urgency','preferred_call_time','lead_score']:
+                val = extraction.get(field)
+                if val is not None:
+                    setattr(lead, field, val)
+
+            new_status = extraction.get('conv_status')
+            if new_status and lead.conv_status not in ["qualified", "closed"]:
+                lead.conv_status = new_status
+
+            await db.commit()
+
+        # Send reply via WhatsApp
+        success = await wa_send(norm_phone, reply)
+        logger.info(f"[{lead.id}] Reply sent: {success}")
+
+    except Exception as e:
+        logger.error(f"Error in handle_inbound_message for {norm_phone}: {e}", exc_info=True)
+    finally:
+        await redis.delete(processing_key)
 
 # --- VOICE WEBHOOKS ---
 
