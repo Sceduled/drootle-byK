@@ -19,7 +19,10 @@ from core.models import Base
 config = context.config
 
 # Override sqlalchemy.url with the one from config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+db_url = settings.DATABASE_URL
+import re
+db_url = re.sub(r'^postgres(ql)?://', 'postgresql+asyncpg://', db_url)
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
