@@ -53,10 +53,14 @@ class WhatsAppClient:
         headers = {"Content-Type": "application/json"}
         if self.waha_key:
             headers["Authorization"] = f"Bearer {self.waha_key}"
+            headers["X-Api-Key"] = self.waha_key
 
-        # WAHA expects chatId in format: 919876543210@c.us
+        # If it already has an '@' (like @lid or @g.us), use it directly
         clean_phone = phone.lstrip('+')
-        chat_id = f"{clean_phone}@c.us"
+        if '@' in clean_phone:
+            chat_id = clean_phone
+        else:
+            chat_id = f"{clean_phone}@c.us"
 
         payload = {
             "chatId": chat_id,
