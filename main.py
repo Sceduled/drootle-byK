@@ -73,12 +73,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
-# if os.path.exists("frontend/dist"):
-#     app.mount("/assets", StaticFiles(directory="frontend/dist/assets"))
-#     
-#     @app.get("/{full_path:path}")
-#     async def serve_spa(full_path: str):
-#         return FileResponse("frontend/dist/index.html")
+if os.path.exists("frontend/dist"):
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"))
+    
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        return FileResponse("frontend/dist/index.html")
 
 if __name__ == "__main__":
     import uvicorn
