@@ -62,6 +62,16 @@ async def startup_event():
 async def health_check():
     return {"status": "ok", "service": "drootle-lead-ai"}
 
+@app.get("/api/health/full")
+async def health_check_full():
+    db_ok = await test_db()
+    redis_ok = await test_redis()
+    return {
+        "status": "ok",
+        "postgres_connected": db_ok,
+        "redis_connected": redis_ok
+    }
+
 @app.post("/ping")
 async def ping_post(request: Request):
     """Bare POST test endpoint — bypasses all routers"""
