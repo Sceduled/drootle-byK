@@ -73,7 +73,7 @@ def main():
         
         uvicorn.run(
             "main:app",
-            host="::",
+            host="0.0.0.0",
             port=port,
             loop="asyncio",
             workers=1,
