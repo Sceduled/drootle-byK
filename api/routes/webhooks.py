@@ -149,6 +149,12 @@ async def process_waha_message(payload: dict):
         if not phone and "payload" in payload:
             phone = payload["payload"].get("from")
 
+        # WAHA NOWEB sometimes uses @lid, the real phone is in remoteJidAlt
+        if "payload" in payload:
+            alt_phone = payload["payload"].get("_data", {}).get("key", {}).get("remoteJidAlt")
+            if alt_phone:
+                phone = alt_phone
+
         message_text = payload.get("body") or payload.get("text", "")
         if not message_text and "payload" in payload:
             message_text = payload["payload"].get("body", "")

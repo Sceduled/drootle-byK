@@ -25,7 +25,11 @@ def normalize_phone(raw: str) -> str:
         # already starts with +
         pass
     else:
-        raise ValueError("Invalid phone number format")
+        # If it's a long string of digits (like an LID or international number), just prepend +
+        if cleaned.isdigit() and len(cleaned) >= 10:
+            cleaned = '+' + cleaned
+        else:
+            raise ValueError("Invalid phone number format")
 
     # Ensure it starts with '+'
     if not cleaned.startswith('+'):
