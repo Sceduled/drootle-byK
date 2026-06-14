@@ -1,6 +1,6 @@
-# Drootle Lead AI
+# Agentic Lead AI
 
-Drootle Lead AI is a fully autonomous AI sales and qualification agent specifically built for performance marketing campaigns. It intercepts inbound leads, qualifies them conversationally over WhatsApp (via Meta or OpenWA), scores them (HOT/WARM/COLD), and orchestrates downstream actions like Google Sheets updates, Sales team escalations, and automated call reminders.
+Agentic Lead AI is a fully autonomous AI sales and qualification agent specifically built for performance marketing campaigns. It intercepts inbound leads, qualifies them conversationally over WhatsApp (via Meta or OpenWA), scores them (HOT/WARM/COLD), and orchestrates downstream actions like Google Sheets updates, Sales team escalations, and automated call reminders.
 
 ---
 

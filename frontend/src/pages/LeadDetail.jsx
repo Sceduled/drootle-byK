@@ -312,7 +312,7 @@ export default function LeadDetail() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {conversations.map((msg, idx) => {
             const isSystem = msg.role === 'system';
-            const isMaya = msg.role === 'assistant';
+            const isAgent = msg.role === 'assistant';
             const isUser = msg.role === 'user';
             
             if (isSystem) {

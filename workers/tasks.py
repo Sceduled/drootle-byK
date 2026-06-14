@@ -6,6 +6,7 @@ import asyncio
 import functools
 import traceback
 from datetime import datetime, timedelta, timezone
+from client_config import SEQUENCE_MESSAGES
 from arq.connections import RedisSettings
 from arq.cron import cron
 from sqlalchemy import select, text
@@ -13,7 +14,7 @@ from sqlalchemy import select, text
 from core.config import settings
 from core.database import AsyncSessionLocal
 from core.models import Lead, Conversation, NotificationLog
-from prompts.maya import get_sequence_message
+from prompts.agent import get_sequence_message
 from services.whatsapp import send_message
 from services.gpt import process_message, call_gpt_mini
 from services.sheets import update_lead_row
@@ -72,13 +73,7 @@ async def send_opening_message(ctx, lead_id: str):
             return
             
         display_name = lead.name if lead.name else "there"
-        opening_message = (
-            f"Hi {display_name}! 👋 I'm Maya, from the Drootle team.\n"
-            f"You recently reached out about scaling your business with ads.\n"
-            f"I just have a few quick questions so Darshaan's team is\n"
-            f"fully prepped before they speak with you.\n"
-            f"Takes 2 minutes — shall we? 😊"
-        )
+        opening_message = SEQUENCE_MESSAGES["first_touch"].format(name=display_name)
         
         success = await send_message(lead.phone, opening_message)
         

@@ -13,7 +13,7 @@ export default function Layout({ children }) {
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <div className="w-64 bg-gray-900 text-white flex flex-col shrink-0">
         <div className="p-6">
-          <h1 className="text-xl font-bold tracking-wider">DROOTLE<span className="text-gray-400 font-normal"> AI</span></h1>
+          <h1 className="text-xl font-bold tracking-wider">LEAD<span className="text-gray-400 font-normal"> AI</span></h1>
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">

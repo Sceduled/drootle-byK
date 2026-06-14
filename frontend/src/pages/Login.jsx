@@ -28,13 +28,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-sm border border-gray-100">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
-            Drootle Ops
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to manage leads
-          </p>
+        <div className="mb-8 text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Lead Ops</h2>
+          <p className="mt-2 text-sm text-gray-600">Sign in to manage leads</p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           {error && <div className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-md">{error}</div>}

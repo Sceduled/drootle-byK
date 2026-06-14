@@ -1,5 +1,5 @@
 """
-Configuration module for Drootle Lead AI.
+Configuration module for Agentic Lead AI.
 Loads settings from environment variables using Pydantic BaseSettings.
 """
 from pydantic_settings import BaseSettings
@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # Dashboard auth
     DASHBOARD_USERNAME: str
     DASHBOARD_PASSWORD: str
+
+    # Client & Admin
+    CLIENT_ID: str = ""
+    CLIENT_NAME: str = ""
+    ADMIN_API_URL: str = ""
+    ADMIN_SECRET: str = ""
 
     @property
     def sales_team_numbers(self) -> List[str]:

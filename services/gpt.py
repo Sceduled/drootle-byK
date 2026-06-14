@@ -7,7 +7,7 @@ import asyncio
 from openai import AsyncOpenAI
 
 from core.config import settings
-from prompts.maya import (
+from prompts.agent import (
     SYSTEM_PROMPT_CONVERSATION,
     SYSTEM_PROMPT_EXTRACTION,
     LEAD_SUMMARY_TEMPLATE
