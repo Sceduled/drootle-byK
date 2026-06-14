@@ -17,7 +17,7 @@ from prompts.maya import get_sequence_message
 from services.whatsapp import send_message
 from services.gpt import process_message, call_gpt_mini
 from services.sheets import update_lead_row
-from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation, notify_sales_opt_out
+from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation, notify_sales_opt_out, notify_close_intent, notify_cold_reengaged
 from utils.job_guard import can_send_message
 from utils.stage_logger import log_stage_change
 from services.bolna import trigger_outbound_call as _trigger_outbound_bolna
@@ -162,6 +162,19 @@ async def process_buffered_message(ctx, phone: str):
             old_status = lead.conv_status
             lead.conv_status = new_status
             await log_stage_change(str(lead.id), old_status, new_status, "ai", "Resumed from stalled", db)
+            
+        elif extraction.get("close_intent") and lead.conv_status == "post_call":
+            old_status = lead.conv_status
+            lead.conv_status = "awaiting_close"
+            await log_stage_change(str(lead.id), old_status, "awaiting_close", "ai", "Close intent detected", db)
+            await notify_close_intent(lead)
+            
+        elif lead.conv_status == "fomo" and new_status in ["qualifying", "in_progress", "awaiting_call"]:
+            old_status = lead.conv_status
+            lead.conv_status = new_status
+            await log_stage_change(str(lead.id), old_status, new_status, "ai", "Re-engaged during FOMO", db)
+            await notify_cold_reengaged(lead)
+            
         elif new_status and new_status != lead.conv_status:
             if lead.conv_status not in ["qualified", "closed"]:
                 old_status = lead.conv_status
@@ -477,7 +490,157 @@ async def start_reactivation(ctx, lead_id: str):
 
 @safe_task
 async def start_post_call_sequence(ctx, lead_id: str):
-    pass
+    logger.info(f"[{lead_id}] Executing start_post_call_sequence")
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "post_call", 5, db)
+        if not can_send: return
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('post_call_message_1', lead_id)
+    await arq_pool.enqueue_job('post_call_message_2', lead_id, _defer_by=timedelta(days=1))
+    await arq_pool.enqueue_job('post_call_message_3', lead_id, _defer_by=timedelta(days=2))
+    await arq_pool.enqueue_job('post_call_message_4', lead_id, _defer_by=timedelta(days=4))
+    await arq_pool.enqueue_job('post_call_message_5', lead_id, _defer_by=timedelta(days=6))
+    await arq_pool.enqueue_job('check_post_call_complete', lead_id, _defer_by=timedelta(days=7))
+
+@safe_task
+async def post_call_message_1(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "post_call", 5, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("post_call_day1", name=lead.name or "there")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def post_call_message_2(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "post_call", 5, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("post_call_day2", industry=lead.industry or "your industry")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def post_call_message_3(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "post_call", 5, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("post_call_day3")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def post_call_message_4(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "post_call", 5, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("post_call_day5", pain_point=lead.pain_point or "your current challenges")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def post_call_message_5(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "post_call", 5, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("post_call_day7", name=lead.name or "there")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def check_post_call_complete(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead or lead.conv_status != "post_call": return
+        
+        old_status = lead.conv_status
+        lead.conv_status = "fomo"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "fomo", "timeout", "Post-Call sequence completed", db)
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('start_fomo_sequence', lead_id)
+
+@safe_task
+async def start_fomo_sequence(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing start_fomo_sequence")
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "fomo", 6, db)
+        if not can_send: return
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('fomo_message_1', lead_id)
+    await arq_pool.enqueue_job('fomo_message_2', lead_id, _defer_by=timedelta(days=1))
+    await arq_pool.enqueue_job('fomo_message_3', lead_id, _defer_by=timedelta(days=2))
+    await arq_pool.enqueue_job('check_fomo_complete', lead_id, _defer_by=timedelta(days=3))
+
+@safe_task
+async def fomo_message_1(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "fomo", 6, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("fomo_day1")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def fomo_message_2(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "fomo", 6, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("fomo_day2")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def fomo_message_3(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "fomo", 6, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("fomo_day3")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def check_fomo_complete(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead or lead.conv_status != "fomo": return
+        
+        old_status = lead.conv_status
+        lead.conv_status = "cold"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "cold", "timeout", "FOMO sequence completed", db)
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('start_reactivation', lead_id, _defer_by=timedelta(days=14))
 
 @safe_task
 async def start_closed_sequence(ctx, lead_id: str):
@@ -503,6 +666,17 @@ class WorkerSettings:
         check_dnp_exhausted,
         start_reactivation,
         start_post_call_sequence,
+        post_call_message_1,
+        post_call_message_2,
+        post_call_message_3,
+        post_call_message_4,
+        post_call_message_5,
+        check_post_call_complete,
+        start_fomo_sequence,
+        fomo_message_1,
+        fomo_message_2,
+        fomo_message_3,
+        check_fomo_complete,
         start_closed_sequence
     ]
     cron_jobs = [

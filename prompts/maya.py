@@ -34,8 +34,14 @@ No prose. No markdown. No code fences. Raw JSON only.
   "lead_score": null,
   "conv_status": null,
   "opted_out": false,
-  "escalate": false
+  "escalate": false,
+  "close_intent": false
 }
+
+close_intent = true if lead says anything like:
+"yes", "let's go", "I'm in", "send me the proposal",
+"sounds good", "ready to start", "when can we begin",
+"let's do it", "move forward"
 
 opted_out = true if lead says anything like:
 "not interested", "stop", "leave me alone", 

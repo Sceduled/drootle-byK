@@ -49,6 +49,24 @@ async def notify_sales_opt_out(lead) -> None:
     message = f"❌ OPT OUT — {lead.name or 'Unknown'} asked to stop messaging.\nPhone: {lead.phone}"
     await _send_to_sales_team(str(lead.id), message, "opt_out")
 
+async def notify_close_intent(lead) -> None:
+    message = (
+        f"🏆 READY TO CLOSE\n"
+        f"{lead.name} | {lead.company_name}\n"
+        f"They just said YES — call them now!\n"
+        f"Phone: {lead.phone}"
+    )
+    await _send_to_sales_team(str(lead.id), message, "close_intent")
+
+async def notify_cold_reengaged(lead) -> None:
+    message = (
+        f"💡 COLD LEAD RE-ENGAGED\n"
+        f"{lead.name} replied during FOMO sequence\n"
+        f"Score: {lead.lead_score}\n"
+        f"Phone: {lead.phone}"
+    )
+    await _send_to_sales_team(str(lead.id), message, "reengaged_alert")
+
 async def _send_to_sales_team(lead_id: str, message: str, notif_type: str):
     numbers = settings.sales_team_numbers
     if not numbers:
