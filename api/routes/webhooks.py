@@ -17,6 +17,8 @@ from core.database import get_db
 from core.models import Lead, Conversation
 from core.redis import get_redis
 from utils.phone import normalize_phone
+from services.gpt import call_gpt_mini
+from services.admin_reporter import push_event
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -76,6 +78,9 @@ async def new_lead(
         db.add(lead)
         await db.commit()
         await db.refresh(lead)
+
+        await push_event("lead_created", str(lead.id), {"source": "webhook"})
+
         logger.info(f"New lead created. lead_id: {lead.id}")
 
     if is_new:
@@ -201,9 +206,6 @@ async def waha_webhook(request: Request):
         logger.error(f"WAHA webhook error: {e}", exc_info=True)
         return {"status": "error", "error": str(e)}
 
-@router.get("/debug/waha")
-async def get_waha_debug():
-    return {"last_payloads": last_payloads}
 
 async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: str = None):
     """Process inbound message directly — no ARQ worker needed."""
@@ -259,6 +261,7 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
                 db.add(lead)
                 await db.commit()
                 await db.refresh(lead)
+                await push_event("lead_created", str(lead.id), {"source": "whatsapp_inbound"})
                 logger.info(f"Created ghost lead for {norm_phone}, lead_id: {lead.id}")
 
             # Fetch history

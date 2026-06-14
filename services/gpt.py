@@ -8,9 +8,8 @@ from openai import AsyncOpenAI
 
 from core.config import settings
 from prompts.agent import (
-    SYSTEM_PROMPT_CONVERSATION,
-    SYSTEM_PROMPT_EXTRACTION,
-    LEAD_SUMMARY_TEMPLATE
+    get_system_prompt,
+    get_extraction_prompt
 )
 
 logger = logging.getLogger(__name__)
@@ -56,23 +55,18 @@ async def call_gpt(messages: list, response_format: str = "text") -> str:
 async def process_message(lead, conversation_history: list, new_message: str, is_voice: bool = False) -> tuple[str, dict]:
     logger.info(f"Running dual GPT-4o calls for lead_id: {lead.id} (is_voice={is_voice})")
     
-    lead_summary = LEAD_SUMMARY_TEMPLATE.format(
-        industry=lead.industry or "not yet known",
-        target_markets=lead.target_markets or "not yet known",
-        monthly_ad_budget=lead.monthly_ad_budget or "not yet known",
-        ads_experience=lead.ads_experience or "not yet known",
-        pain_point=lead.pain_point or "not yet known",
-        urgency=lead.urgency or "not yet known",
-        preferred_call_time=lead.preferred_call_time or "not yet known",
-        lead_score=lead.lead_score or "not yet known"
-    )
+    lead_summary = f"""
+Industry: {lead.industry or 'not yet known'}
+Target Markets: {lead.target_markets or 'not yet known'}
+Monthly Ad Budget: {lead.monthly_ad_budget or 'not yet known'}
+Ads Experience: {lead.ads_experience or 'not yet known'}
+Pain Point: {lead.pain_point or 'not yet known'}
+Urgency: {lead.urgency or 'not yet known'}
+Preferred Call Time: {lead.preferred_call_time or 'not yet known'}
+Lead Score: {lead.lead_score or 'not yet known'}
+"""
     
-    sys_prompt_conv = SYSTEM_PROMPT_CONVERSATION.format(
-        lead_name=lead.name or "there",
-        company_name=lead.company_name or "your business",
-        source_ad=lead.source_ad or "our recent ad",
-        lead_summary=lead_summary
-    )
+    sys_prompt_conv = get_system_prompt(lead_summary)
     
     history_arr = []
     for conv in conversation_history:
@@ -91,7 +85,7 @@ async def process_message(lead, conversation_history: list, new_message: str, is
         messages_conv = messages_conv[:5] + messages_conv[-45:]
 
     messages_ext = [
-        {"role": "system", "content": SYSTEM_PROMPT_EXTRACTION}
+        {"role": "system", "content": get_extraction_prompt()}
     ] + history_arr
     if new_message:
         messages_ext.append({"role": "user", "content": new_message})

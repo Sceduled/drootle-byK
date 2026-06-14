@@ -209,8 +209,10 @@ async def lead_action(lead_id: str, payload: ActionPayload, db: AsyncSession = D
     if not lead: return {"error": "not found"}
     
     if payload.action == "mark_closed":
+        old_status = lead.conv_status
         lead.conv_status = "closed"
         await db.commit()
+        await log_stage_change(lead_id, old_status, "closed", "sales", "Manual close from action", db)
         return {"success": True}
     elif payload.action == "mark_hot":
         lead.lead_score = "HOT"

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     SALES_TEAM_WHATSAPP_NUMBERS: str = ""
 
     # Auth
-    JWT_SECRET: str = "supersecret"
+    JWT_SECRET: str
     JWT_EXPIRY_HOURS: int = 24
 
     # Webhook security

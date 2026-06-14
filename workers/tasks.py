@@ -14,6 +14,7 @@ from sqlalchemy import select, text
 from core.config import settings
 from core.database import AsyncSessionLocal
 from core.models import Lead, Conversation, NotificationLog
+from core.job_guard import can_send_message
 from prompts.agent import get_sequence_message
 from services.whatsapp import send_message
 from services.gpt import process_message, call_gpt_mini
@@ -79,8 +80,10 @@ async def send_opening_message(ctx, lead_id: str):
         
         if success:
             db.add(Conversation(lead_id=lead.id, role="assistant", content=opening_message))
+            old_status = lead.conv_status
             lead.conv_status = "in_progress"
             await db.commit()
+            await log_stage_change(lead_id, old_status, "in_progress", "system", "Opening message sent", db)
             logger.info(f"[{lead_id}] Opening message sent successfully to phone: {lead.phone}")
         else:
             logger.error(f"[{lead_id}] Failed to send opening message to phone: {lead.phone}")
@@ -412,8 +415,10 @@ async def escalate_to_sales(ctx, lead_id: str):
         if not lead: return
         
         await notify_sales_escalation(lead_id)
+        old_status = lead.conv_status
         lead.conv_status = "escalated"
         await db.commit()
+        await log_stage_change(lead_id, old_status, "escalated", "ai", "Escalated to sales", db)
 
 @safe_task
 async def start_dnp_recovery(ctx, lead_id: str):
@@ -857,10 +862,6 @@ async def check_fomo_complete(ctx, lead_id: str):
         
     arq_pool = ctx.get('redis')
     await arq_pool.enqueue_job('start_reactivation', lead_id, _defer_by=timedelta(days=14))
-
-@safe_task
-async def start_closed_sequence(ctx, lead_id: str):
-    pass
 
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
