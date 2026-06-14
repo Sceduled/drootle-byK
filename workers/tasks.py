@@ -16,7 +16,9 @@ from core.models import Lead, Conversation, NotificationLog
 from services.whatsapp import send_message
 from services.gpt import process_message, call_gpt_mini
 from services.sheets import update_lead_row
-from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation
+from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation, notify_sales_opt_out
+from utils.job_guard import can_send_message
+from utils.stage_logger import log_stage_change
 from services.bolna import trigger_outbound_call as _trigger_outbound_bolna
 from services.pipecat_client import trigger_pipecat_call as _trigger_pipecat_call
 
@@ -56,6 +58,11 @@ async def send_opening_message(ctx, lead_id: str):
     logger.info(f"[{lead_id}] Starting send_opening_message task")
     
     async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "new", 1, db)
+        if not can_send:
+            logger.info(f"[{lead_id}] Skipping send_opening_message: {reason}")
+            return
+            
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         
@@ -115,6 +122,23 @@ async def process_buffered_message(ctx, phone: str):
         
         reply, extraction = await process_message(lead, history, combined)
         
+        if extraction.get("opted_out"):
+            lead.opted_out = True
+            old_status = lead.conv_status
+            lead.conv_status = "lost"
+            await db.commit()
+            await log_stage_change(str(lead.id), old_status, "lost", "ai", "Opt-out detected", db)
+            await notify_sales_opt_out(lead)
+            await redis.delete(f"processing:{phone}")
+            return
+            
+        if extraction.get("escalate"):
+            lead.escalated = True
+            await db.commit()
+            await log_stage_change(str(lead.id), lead.conv_status, lead.conv_status, "ai", "Escalation requested", db)
+            arq_pool = ctx.get('redis')
+            await arq_pool.enqueue_job('escalate_to_sales', str(lead.id))
+        
         db.add(Conversation(lead_id=lead.id, role="user", content=combined))
         db.add(Conversation(lead_id=lead.id, role="assistant", content=reply))
         
@@ -133,9 +157,11 @@ async def process_buffered_message(ctx, phone: str):
             logger.warning(f"[{lead.id}] lead_score missing, defaulting to WARM")
         
         new_status = extraction.get('conv_status')
-        if new_status:
+        if new_status and new_status != lead.conv_status:
             if lead.conv_status not in ["qualified", "closed"]:
+                old_status = lead.conv_status
                 lead.conv_status = new_status
+                await log_stage_change(str(lead.id), old_status, new_status, "ai", "Status updated by extraction", db)
         
         await db.commit()
         await send_message(phone, reply)

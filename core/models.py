@@ -45,6 +45,13 @@ class Lead(Base):
     last_call_at = Column(DateTime(timezone=True), nullable=True)
     call_count = Column(Integer, default=0)
 
+    # Lifecycle & Sequences
+    opted_out = Column(Boolean, default=False, nullable=False, server_default=text("false"))
+    escalated = Column(Boolean, default=False, nullable=False, server_default=text("false"))
+    current_sequence = Column(Integer, default=0)
+    sequence_step = Column(Integer, default=0)
+    last_sequence_at = Column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -84,3 +91,31 @@ class NotificationLog(Base):
 
     # Relationships
     lead = relationship("Lead", back_populates="notifications")
+
+class StageHistory(Base):
+    __tablename__ = "stage_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False)
+    from_status = Column(Text, nullable=True)
+    to_status = Column(Text, nullable=False)
+    triggered_by = Column(Text, nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    lead = relationship("Lead")
+
+    __table_args__ = (
+        Index("ix_stage_history_lead_id_created_at_desc", "lead_id", text("created_at DESC")),
+    )
+
+class SequenceConfig(Base):
+    __tablename__ = "sequence_config"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sequence_number = Column(Integer, unique=True, nullable=False)
+    sequence_name = Column(Text, nullable=False)
+    enabled = Column(Boolean, default=True, server_default=text("true"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

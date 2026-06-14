@@ -45,6 +45,10 @@ async def notify_sales_escalation(lead_id: str) -> None:
     message = f"🚨 ESCALATION — {lead.name or 'Unknown'} asked to speak to a human NOW\nPhone: {lead.phone}\nCompany: {lead.company_name or 'Unknown'}\nScore so far: {lead.lead_score or 'Unknown'}"
     await _send_to_sales_team(lead_id, message, "escalation")
 
+async def notify_sales_opt_out(lead) -> None:
+    message = f"❌ OPT OUT — {lead.name or 'Unknown'} asked to stop messaging.\nPhone: {lead.phone}"
+    await _send_to_sales_team(str(lead.id), message, "opt_out")
+
 async def _send_to_sales_team(lead_id: str, message: str, notif_type: str):
     numbers = settings.sales_team_numbers
     if not numbers:
