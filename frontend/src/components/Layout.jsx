@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut } from 'lucide-react';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -30,6 +30,13 @@ export default function Layout({ children }) {
           >
             <LayoutDashboard size={20} />
             Metrics
+          </Link>
+          <Link 
+            to="/settings/sequences" 
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname.startsWith('/settings') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
+          >
+            <Settings size={20} />
+            Settings
           </Link>
         </nav>
 

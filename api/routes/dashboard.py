@@ -7,7 +7,7 @@ from sqlalchemy import select, func, desc, case
 from typing import Optional
 
 from core.database import get_db
-from core.models import Lead, Conversation, StageHistory
+from core.models import Lead, Conversation, StageHistory, SequenceConfig
 from api.routes.auth import get_current_user
 from api.routes.webhooks import get_arq_pool
 from core.config import settings
@@ -286,3 +286,55 @@ async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSessi
         return {"success": True, "next_stage": "closed"}
         
     return {"error": "unknown outcome"}
+
+SEQUENCES_DEF = [
+    {"sequence_number": 1, "sequence_name": "First Touch"},
+    {"sequence_number": 2, "sequence_name": "AI Qualification"},
+    {"sequence_number": 3, "sequence_name": "DNP Recovery"},
+    {"sequence_number": 4, "sequence_name": "Awaiting Call"},
+    {"sequence_number": 5, "sequence_name": "Post-Call Validation"},
+    {"sequence_number": 6, "sequence_name": "FOMO Creation"},
+    {"sequence_number": 7, "sequence_name": "Lead Recovery / Reactivation"},
+    {"sequence_number": 8, "sequence_name": "Closed & Referral Engine"},
+    {"sequence_number": 9, "sequence_name": "Upsell & Cross-Sell"},
+]
+
+@router.get("/sequences")
+async def get_sequences(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SequenceConfig).order_by(SequenceConfig.sequence_number.asc()))
+    sequences = result.scalars().all()
+    
+    if len(sequences) < 9:
+        existing_nums = [s.sequence_number for s in sequences]
+        for seq_def in SEQUENCES_DEF:
+            if seq_def["sequence_number"] not in existing_nums:
+                new_seq = SequenceConfig(
+                    sequence_number=seq_def["sequence_number"],
+                    sequence_name=seq_def["sequence_name"],
+                    enabled=True
+                )
+                db.add(new_seq)
+        await db.commit()
+        result = await db.execute(select(SequenceConfig).order_by(SequenceConfig.sequence_number.asc()))
+        sequences = result.scalars().all()
+        
+    return sequences
+
+class SequencePatchPayload(BaseModel):
+    enabled: bool
+
+@router.patch("/sequences/{sequence_number}")
+async def patch_sequence(sequence_number: int, payload: SequencePatchPayload, db: AsyncSession = Depends(get_db)):
+    if sequence_number in [1, 2]:
+        return {"error": "Cannot modify locked sequences (1 & 2)"}
+        
+    result = await db.execute(select(SequenceConfig).where(SequenceConfig.sequence_number == sequence_number))
+    seq = result.scalars().first()
+    
+    if not seq:
+        return {"error": "Sequence not found"}
+        
+    seq.enabled = payload.enabled
+    await db.commit()
+    
+    return {"success": True, "enabled": seq.enabled}
