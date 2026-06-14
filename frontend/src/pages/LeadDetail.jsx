@@ -134,6 +134,15 @@ export default function LeadDetail() {
             >
               Mark Closed
             </button>
+            {lead.conv_status === 'closed' && (
+              <button 
+                onClick={() => handleAction('start_upsell')}
+                disabled={loadingAction}
+                className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
+              >
+                Mark Upsell Opportunity
+              </button>
+            )}
             <button 
               onClick={() => handleAction('mark_hot')}
               disabled={loadingAction || lead.lead_score === 'HOT'}

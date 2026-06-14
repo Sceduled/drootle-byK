@@ -67,6 +67,15 @@ async def notify_cold_reengaged(lead) -> None:
     )
     await _send_to_sales_team(str(lead.id), message, "reengaged_alert")
 
+async def notify_archived_reengaged(lead) -> None:
+    message = (
+        f"🔄 ARCHIVED LEAD RE-ENGAGED\n"
+        f"{lead.name} just replied from the cold archives!\n"
+        f"Score: {lead.lead_score}\n"
+        f"Phone: {lead.phone}"
+    )
+    await _send_to_sales_team(str(lead.id), message, "archived_reengaged_alert")
+
 async def _send_to_sales_team(lead_id: str, message: str, notif_type: str):
     numbers = settings.sales_team_numbers
     if not numbers:

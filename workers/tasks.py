@@ -17,7 +17,7 @@ from prompts.maya import get_sequence_message
 from services.whatsapp import send_message
 from services.gpt import process_message, call_gpt_mini
 from services.sheets import update_lead_row
-from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation, notify_sales_opt_out, notify_close_intent, notify_cold_reengaged
+from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation, notify_sales_opt_out, notify_close_intent, notify_cold_reengaged, notify_archived_reengaged
 from utils.job_guard import can_send_message
 from utils.stage_logger import log_stage_change
 from services.bolna import trigger_outbound_call as _trigger_outbound_bolna
@@ -175,11 +175,41 @@ async def process_buffered_message(ctx, phone: str):
             await log_stage_change(str(lead.id), old_status, new_status, "ai", "Re-engaged during FOMO", db)
             await notify_cold_reengaged(lead)
             
+        elif lead.conv_status == "cold" and new_status in ["qualifying", "in_progress", "awaiting_call"]:
+            old_status = lead.conv_status
+            lead.conv_status = new_status
+            await log_stage_change(str(lead.id), old_status, new_status, "ai", "Re-engaged from cold", db)
+            await notify_archived_reengaged(lead)
+            
         elif new_status and new_status != lead.conv_status:
             if lead.conv_status not in ["qualified", "closed"]:
                 old_status = lead.conv_status
                 lead.conv_status = new_status
                 await log_stage_change(str(lead.id), old_status, new_status, "ai", "Status updated by extraction", db)
+        
+        if extraction.get("referral_detected"):
+            ref_name = extraction.get("referral_name") or "Friend"
+            ref_phone = extraction.get("referral_phone")
+            if ref_phone:
+                new_lead = Lead(
+                    name=ref_name,
+                    phone=ref_phone,
+                    conv_status="new",
+                    source_ad=f"Referral from {lead.name}",
+                )
+                db.add(new_lead)
+                await db.commit()
+                await db.refresh(new_lead)
+                arq_pool = ctx.get('redis')
+                await arq_pool.enqueue_job('send_opening_message', str(new_lead.id))
+                logger.info(f"Referral created from closed client {lead.name}")
+        
+        if extraction.get("upsell_signal") and lead.conv_status == "closed":
+            old_status = lead.conv_status
+            lead.conv_status = "upsell"
+            await log_stage_change(str(lead.id), old_status, "upsell", "ai", "Upsell signal detected", db)
+            arq_pool = ctx.get('redis')
+            await arq_pool.enqueue_job('start_upsell_sequence', str(lead.id))
         
         await db.commit()
         await send_message(phone, reply)
@@ -486,7 +516,198 @@ async def check_dnp_exhausted(ctx, lead_id: str):
 
 @safe_task
 async def start_reactivation(ctx, lead_id: str):
-    pass
+    logger.info(f"[{lead_id}] Executing start_reactivation")
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "cold", 7, db)
+        if not can_send: return
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('reactivation_1', lead_id)
+    await arq_pool.enqueue_job('reactivation_2', lead_id, _defer_by=timedelta(days=14))
+    await arq_pool.enqueue_job('reactivation_3', lead_id, _defer_by=timedelta(days=28))
+    await arq_pool.enqueue_job('reactivation_4', lead_id, _defer_by=timedelta(days=42))
+    await arq_pool.enqueue_job('reactivation_5', lead_id, _defer_by=timedelta(days=70))
+    await arq_pool.enqueue_job('check_reactivation_complete', lead_id, _defer_by=timedelta(days=84))
+
+@safe_task
+async def reactivation_1(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "cold", 7, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("reactivation_wk2")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def reactivation_2(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "cold", 7, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("reactivation_wk4")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def reactivation_3(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "cold", 7, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("reactivation_wk6")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def reactivation_4(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "cold", 7, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("reactivation_wk8")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def reactivation_5(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "cold", 7, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("reactivation_wk12")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def check_reactivation_complete(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead or lead.conv_status != "cold": return
+        old_status = lead.conv_status
+        lead.conv_status = "archived"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "archived", "timeout", "12-week reactivation exhausted", db)
+
+@safe_task
+async def start_closed_sequence(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing start_closed_sequence")
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "closed", 8, db)
+        if not can_send: return
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('closed_message_1', lead_id, _defer_by=timedelta(days=3))
+    await arq_pool.enqueue_job('closed_message_2', lead_id, _defer_by=timedelta(days=14))
+    await arq_pool.enqueue_job('closed_message_3', lead_id, _defer_by=timedelta(days=30))
+    await arq_pool.enqueue_job('closed_message_4', lead_id, _defer_by=timedelta(days=35))
+
+@safe_task
+async def closed_message_1(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "closed", 8, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("closed_day3")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def closed_message_2(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "closed", 8, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("closed_wk2")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def closed_message_3(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "closed", 8, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("closed_mo1")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def closed_message_4(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "closed", 8, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("closed_mo1_fup")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def start_upsell_sequence(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing start_upsell_sequence")
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "upsell", 9, db)
+        if not can_send: return
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('upsell_message_1', lead_id)
+    await arq_pool.enqueue_job('upsell_message_2', lead_id, _defer_by=timedelta(days=4))
+    await arq_pool.enqueue_job('upsell_message_3', lead_id, _defer_by=timedelta(days=7))
+
+@safe_task
+async def upsell_message_1(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "upsell", 9, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("upsell_day1")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def upsell_message_2(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "upsell", 9, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("upsell_day4")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def upsell_message_3(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "upsell", 9, db)
+        if not can_send: return
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("upsell_day7")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
 
 @safe_task
 async def start_post_call_sequence(ctx, lead_id: str):
@@ -665,6 +886,12 @@ class WorkerSettings:
         dnp_message_4,
         check_dnp_exhausted,
         start_reactivation,
+        reactivation_1,
+        reactivation_2,
+        reactivation_3,
+        reactivation_4,
+        reactivation_5,
+        check_reactivation_complete,
         start_post_call_sequence,
         post_call_message_1,
         post_call_message_2,
@@ -677,7 +904,15 @@ class WorkerSettings:
         fomo_message_2,
         fomo_message_3,
         check_fomo_complete,
-        start_closed_sequence
+        start_closed_sequence,
+        closed_message_1,
+        closed_message_2,
+        closed_message_3,
+        closed_message_4,
+        start_upsell_sequence,
+        upsell_message_1,
+        upsell_message_2,
+        upsell_message_3
     ]
     cron_jobs = [
         cron(check_stalled_leads, hour={0, 6, 12, 18})

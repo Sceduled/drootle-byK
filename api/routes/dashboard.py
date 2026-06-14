@@ -167,6 +167,15 @@ async def lead_action(lead_id: str, payload: ActionPayload, db: AsyncSession = D
             return {"success": True}
         else:
             return {"error": "voice not enabled"}
+    elif payload.action == "start_upsell":
+        old_status = lead.conv_status
+        lead.conv_status = "upsell"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "upsell", "sales", "Manual upsell trigger", db)
+        arq_pool = await get_arq_pool()
+        await arq_pool.enqueue_job('start_upsell_sequence', lead_id)
+        return {"success": True}
+        
     return {"error": "unknown action"}
 
 class CallOutcomePayload(BaseModel):

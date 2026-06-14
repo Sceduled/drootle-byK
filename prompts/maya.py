@@ -35,13 +35,23 @@ No prose. No markdown. No code fences. Raw JSON only.
   "conv_status": null,
   "opted_out": false,
   "escalate": false,
-  "close_intent": false
+  "close_intent": false,
+  "referral_detected": false,
+  "referral_name": null,
+  "referral_phone": null,
+  "upsell_signal": false
 }
 
 close_intent = true if lead says anything like:
 "yes", "let's go", "I'm in", "send me the proposal",
 "sounds good", "ready to start", "when can we begin",
 "let's do it", "move forward"
+
+referral_detected = true if lead mentions another person's name or says:
+"my friend", "my colleague", "I know someone", "you should talk to"
+
+upsell_signal = true if lead asks about other services or says:
+"what else do you do", "do you also do X", "can you help with"
 
 opted_out = true if lead says anything like:
 "not interested", "stop", "leave me alone", 
