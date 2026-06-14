@@ -239,8 +239,15 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
         if not messages:
             return
 
-        combined = "\n".join(m if isinstance(m, str) else m.decode() for m in messages)
-        logger.info(f"Processing {len(messages)} buffered message(s) for {norm_phone}: {combined!r}")
+        # Deduplicate identical consecutive messages (caused by WAHA duplicate webhooks)
+        unique_messages = []
+        for m in messages:
+            decoded = m if isinstance(m, str) else m.decode()
+            if not unique_messages or unique_messages[-1] != decoded:
+                unique_messages.append(decoded)
+
+        combined = "\n".join(unique_messages)
+        logger.info(f"Processing {len(unique_messages)} unique buffered message(s) for {norm_phone}: {combined!r}")
 
         async with AsyncSessionLocal() as db:
             # Find or create lead
