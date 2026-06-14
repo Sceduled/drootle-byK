@@ -10,6 +10,14 @@ const scoreEmoji = {
   COLD: '🔵'
 };
 
+const CALL_OUTCOMES = [
+  { value: "call_went_well",   label: "✅ Call went well" },
+  { value: "reschedule",       label: "📅 Need to reschedule" },
+  { value: "no_show",         label: "📵 No show" },
+  { value: "not_interested",  label: "❌ Not interested" },
+  { value: "deal_closed",     label: "🏆 Deal closed" },
+];
+
 export default function LeadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -51,6 +59,24 @@ export default function LeadDetail() {
     }
   };
 
+  const handleOutcomeSelect = async (e) => {
+    const outcome = e.target.value;
+    if (!outcome) return;
+    
+    if (window.confirm("Are you sure you want to log this outcome?")) {
+      setLoadingAction("outcome");
+      try {
+        await api.post(`/dashboard/leads/${id}/call-outcome`, { outcome });
+        await fetchLead();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to log outcome');
+      } finally {
+        setLoadingAction(null);
+      }
+    }
+    e.target.value = ""; // Reset dropdown
+  };
+
   if (!data) return <div className="p-8 text-center text-gray-500">Loading...</div>;
 
   const { lead, conversations } = data;
@@ -85,6 +111,22 @@ export default function LeadDetail() {
           </span>
 
           <div className="space-y-3 mt-4 flex flex-col">
+            {lead.conv_status === 'awaiting_call' && (
+              <div className="mb-2">
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Log Call Outcome</label>
+                <select 
+                  className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 disabled:opacity-50"
+                  onChange={handleOutcomeSelect}
+                  disabled={loadingAction === "outcome"}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select outcome...</option>
+                  {CALL_OUTCOMES.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button 
               onClick={() => handleAction('mark_closed')}
               disabled={loadingAction || lead.conv_status === 'closed'}

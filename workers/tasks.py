@@ -13,6 +13,7 @@ from sqlalchemy import select, text
 from core.config import settings
 from core.database import AsyncSessionLocal
 from core.models import Lead, Conversation, NotificationLog
+from prompts.maya import get_sequence_message
 from services.whatsapp import send_message
 from services.gpt import process_message, call_gpt_mini
 from services.sheets import update_lead_row
@@ -157,7 +158,11 @@ async def process_buffered_message(ctx, phone: str):
             logger.warning(f"[{lead.id}] lead_score missing, defaulting to WARM")
         
         new_status = extraction.get('conv_status')
-        if new_status and new_status != lead.conv_status:
+        if lead.conv_status == "stalled" and new_status in ["qualifying", "in_progress", "awaiting_call"]:
+            old_status = lead.conv_status
+            lead.conv_status = new_status
+            await log_stage_change(str(lead.id), old_status, new_status, "ai", "Resumed from stalled", db)
+        elif new_status and new_status != lead.conv_status:
             if lead.conv_status not in ["qualified", "closed"]:
                 old_status = lead.conv_status
                 lead.conv_status = new_status
@@ -192,18 +197,13 @@ async def check_stalled_leads(ctx):
                 select(Conversation)
                 .where(Conversation.lead_id == lead.id)
                 .where(Conversation.role == 'assistant')
-                .where(Conversation.content.like('%just checking in%'))
                 .where(Conversation.created_at > text("NOW() - INTERVAL '24 hours'"))
             )
             already_sent = check_res.scalars().first()
-            
-            if already_sent:
-                continue
+            if already_sent: continue
                 
             name = lead.name if lead.name else "there"
-            msg = (f"Hey {name}! Just checking in — still happy to help "
-                   f"you connect with Darshaan's team at Drootle 😊 "
-                   f"Takes 2 minutes when you're ready!")
+            msg = get_sequence_message("qual_nudge_24h", name=name)
             
             await send_message(lead.phone, msg)
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
@@ -218,11 +218,8 @@ async def check_stalled_leads(ctx):
         abandoned_leads = result_48h.scalars().all()
         
         for lead in abandoned_leads:
-            lead.conv_status = 'stalled'
-            db.add(lead)
-            await db.commit()
-            await arq_pool.enqueue_job('notify_sales_stalled_task', str(lead.id))
-            logger.info(f"[{lead.id}] Marked lead as stalled after 48h")
+            await arq_pool.enqueue_job('start_dnp_recovery', str(lead.id))
+            logger.info(f"[{lead.id}] Triggered start_dnp_recovery after 48h")
             
         result_2h = await db.execute(
             select(Lead)
@@ -308,28 +305,42 @@ If you cannot parse it, return: UNABLE_TO_PARSE
 async def send_call_reminder(ctx, lead_id: str):
     logger.info(f"[{lead_id}] Starting send_call_reminder")
     async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "awaiting_call", 4, db)
+        if not can_send:
+            logger.info(f"[{lead_id}] Skipping send_call_reminder: {reason}")
+            return
+            
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         if not lead or lead.call_reminder_sent:
             return
             
         name = lead.name if lead.name else "there"
-        lead_msg = f"Hi {name}! Just a reminder — Darshaan's team will be calling you at {lead.preferred_call_time} today. Speak soon! 🙌"
-        await send_message(lead.phone, lead_msg)
+        msg_lead = get_sequence_message(
+            "call_reminder_lead",
+            name=name,
+            time=lead.preferred_call_time
+        )
+        await send_message(lead.phone, msg_lead)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg_lead))
         
         score_emoji = {"HOT": "🔴", "WARM": "🟡", "COLD": "🔵"}.get(lead.lead_score, "⚪")
-        sales_msg = (f"📞 CALL NOW — {name} | {lead.company_name or 'Unknown'}\n"
-                     f"{score_emoji} {lead.lead_score or 'UNSCORED'}\n"
-                     f"Industry: {lead.industry or 'Unknown'} | Budget: {lead.monthly_ad_budget or 'Unknown'}\n"
-                     f"Pain: {lead.pain_point or 'Unknown'}\n"
-                     f"Phone: {lead.phone}")
+        msg_sales = get_sequence_message(
+            "call_reminder_sales",
+            name=name,
+            score=f"{score_emoji} {lead.lead_score or 'UNSCORED'}",
+            industry=lead.industry or "Unknown",
+            budget=lead.monthly_ad_budget or "Unknown",
+            pain_point=lead.pain_point or "Unknown",
+            phone=lead.phone
+        )
 
         numbers = settings.sales_team_numbers
         for number in numbers:
-            success = await send_message(number, sales_msg)
+            success = await send_message(number, msg_sales)
             status = "sent" if success else "failed"
-            db.add(NotificationLog(lead_id=lead_id, type="lead_reminder", recipient=number, message_preview=sales_msg[:100], status=status))
-            db.add(NotificationLog(lead_id=lead_id, type="salesperson_reminder", recipient=number, message_preview=sales_msg[:100], status=status))
+            db.add(NotificationLog(lead_id=lead_id, type="call_reminder_lead", recipient=number, message_preview=msg_sales[:100], status=status))
+            db.add(NotificationLog(lead_id=lead_id, type="call_reminder_sales", recipient=number, message_preview=msg_sales[:100], status=status))
             
         lead.call_reminder_sent = True
         await db.commit()
@@ -366,6 +377,112 @@ async def escalate_to_sales(ctx, lead_id: str):
         lead.conv_status = "escalated"
         await db.commit()
 
+@safe_task
+async def start_dnp_recovery(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing start_dnp_recovery")
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "stalled", 3, db)
+        if not can_send:
+            logger.info(f"[{lead_id}] Skipping start_dnp_recovery: {reason}")
+            return
+            
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        
+        old_status = lead.conv_status
+        lead.conv_status = "stalled"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "stalled", "system", "Triggered DNP Recovery", db)
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('dnp_message_1', lead_id, _defer_by=timedelta(hours=2))
+    await arq_pool.enqueue_job('dnp_message_2', lead_id, _defer_by=timedelta(hours=24))
+    await arq_pool.enqueue_job('dnp_message_3', lead_id, _defer_by=timedelta(hours=48))
+    await arq_pool.enqueue_job('dnp_message_4', lead_id, _defer_by=timedelta(hours=72))
+
+@safe_task
+async def dnp_message_1(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "stalled", 3, db)
+        if not can_send: return
+        
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("dnp_day1", name=lead.name or "there")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def dnp_message_2(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "stalled", 3, db)
+        if not can_send: return
+        
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("dnp_day2", name=lead.name or "there")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def dnp_message_3(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "stalled", 3, db)
+        if not can_send: return
+        
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("dnp_day3", name=lead.name or "there")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
+async def dnp_message_4(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        can_send, reason = await can_send_message(lead_id, "stalled", 3, db)
+        if not can_send: return
+        
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        msg = get_sequence_message("dnp_day5", name=lead.name or "there")
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('check_dnp_exhausted', lead_id, _defer_by=timedelta(hours=24))
+
+@safe_task
+async def check_dnp_exhausted(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead or lead.conv_status != "stalled": return
+        
+        old_status = lead.conv_status
+        lead.conv_status = "cold"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "cold", "timeout", "DNP Exhausted", db)
+        
+    arq_pool = ctx.get('redis')
+    await arq_pool.enqueue_job('start_reactivation', lead_id, _defer_by=timedelta(days=14))
+
+@safe_task
+async def start_reactivation(ctx, lead_id: str):
+    pass
+
+@safe_task
+async def start_post_call_sequence(ctx, lead_id: str):
+    pass
+
+@safe_task
+async def start_closed_sequence(ctx, lead_id: str):
+    pass
+
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     functions = [
@@ -377,7 +494,16 @@ class WorkerSettings:
         escalate_to_sales,
         notify_sales_stalled_task,
         notify_sales_qualification_task,
-        dispatch_voice_call
+        dispatch_voice_call,
+        start_dnp_recovery,
+        dnp_message_1,
+        dnp_message_2,
+        dnp_message_3,
+        dnp_message_4,
+        check_dnp_exhausted,
+        start_reactivation,
+        start_post_call_sequence,
+        start_closed_sequence
     ]
     cron_jobs = [
         cron(check_stalled_leads, hour={0, 6, 12, 18})

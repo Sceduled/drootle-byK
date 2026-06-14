@@ -12,6 +12,8 @@ from api.routes.auth import get_current_user
 from api.routes.webhooks import get_arq_pool
 from core.config import settings
 from pydantic import BaseModel
+from utils.stage_logger import log_stage_change
+from services.notifications import notify_sales_opt_out
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -166,3 +168,52 @@ async def lead_action(lead_id: str, payload: ActionPayload, db: AsyncSession = D
         else:
             return {"error": "voice not enabled"}
     return {"error": "unknown action"}
+
+class CallOutcomePayload(BaseModel):
+    outcome: str
+
+@router.post("/leads/{lead_id}/call-outcome")
+async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalars().first()
+    if not lead: return {"error": "not found"}
+    
+    old_status = lead.conv_status
+    arq_pool = await get_arq_pool()
+    outcome = payload.outcome
+    
+    if outcome == "call_went_well":
+        lead.conv_status = "post_call"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "post_call", "sales", "Call went well", db)
+        await arq_pool.enqueue_job('start_post_call_sequence', lead_id)
+        return {"success": True, "next_stage": "post_call"}
+        
+    elif outcome == "reschedule":
+        lead.conv_status = "awaiting_call"
+        lead.call_reminder_sent = False
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "awaiting_call", "sales", "Need to reschedule", db)
+        return {"success": True, "next_stage": "awaiting_call"}
+        
+    elif outcome == "no_show":
+        await log_stage_change(lead_id, old_status, "stalled", "sales", "No show", db)
+        await arq_pool.enqueue_job('start_dnp_recovery', lead_id)
+        return {"success": True, "next_stage": "stalled"}
+        
+    elif outcome == "not_interested":
+        lead.conv_status = "lost"
+        lead.opted_out = True
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "lost", "sales", "Not interested after call", db)
+        await notify_sales_opt_out(lead)
+        return {"success": True, "next_stage": "lost"}
+        
+    elif outcome == "deal_closed":
+        lead.conv_status = "closed"
+        await db.commit()
+        await log_stage_change(lead_id, old_status, "closed", "sales", "Deal closed", db)
+        await arq_pool.enqueue_job('start_closed_sequence', lead_id)
+        return {"success": True, "next_stage": "closed"}
+        
+    return {"error": "unknown outcome"}
