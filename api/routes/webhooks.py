@@ -60,9 +60,11 @@ async def new_lead(
     result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
     lead = result.scalars().first()
 
+    is_new = False
     if lead:
         logger.info(f"Existing lead found, resuming. lead_id: {lead.id}")
     else:
+        is_new = True
         lead = Lead(
             name=payload.name,
             phone=norm_phone,
@@ -76,11 +78,12 @@ async def new_lead(
         await db.refresh(lead)
         logger.info(f"New lead created. lead_id: {lead.id}")
 
-    try:
-        arq_pool = await get_arq_pool()
-        await arq_pool.enqueue_job('send_opening_message', str(lead.id))
-    except Exception as e:
-        logger.error(f"Failed to enqueue ARQ job for lead_id: {lead.id}. Error: {e}")
+    if is_new:
+        try:
+            arq_pool = await get_arq_pool()
+            await arq_pool.enqueue_job('send_opening_message', str(lead.id))
+        except Exception as e:
+            logger.error(f"Failed to enqueue ARQ job for lead_id: {lead.id}. Error: {e}")
 
     return {"status": "received", "lead_id": str(lead.id)}
 
