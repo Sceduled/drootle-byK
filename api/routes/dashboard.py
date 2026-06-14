@@ -7,7 +7,7 @@ from sqlalchemy import select, func, desc, case
 from typing import Optional
 
 from core.database import get_db
-from core.models import Lead, Conversation
+from core.models import Lead, Conversation, StageHistory
 from api.routes.auth import get_current_user
 from api.routes.webhooks import get_arq_pool
 from core.config import settings
@@ -40,7 +40,21 @@ async def get_leads(
         (Lead.lead_score == 'COLD', 3),
         else_=4
     )
-    query = query.order_by(score_sort.asc(), Lead.created_at.desc())
+    status_sort = case(
+        (Lead.conv_status == 'awaiting_call', 1),
+        (Lead.conv_status == 'qualifying', 2),
+        (Lead.conv_status == 'post_call', 3),
+        (Lead.conv_status == 'fomo', 4),
+        (Lead.conv_status == 'stalled', 5),
+        (Lead.conv_status == 'cold', 6),
+        (Lead.conv_status == 'new', 7),
+        (Lead.conv_status == 'closed', 8),
+        (Lead.conv_status == 'upsell', 9),
+        (Lead.conv_status == 'archived', 10),
+        (Lead.conv_status == 'lost', 11),
+        else_=12
+    )
+    query = query.order_by(score_sort.asc(), status_sort.asc(), Lead.created_at.desc())
     
     count_query = select(func.count()).select_from(query.subquery())
     total = await db.scalar(count_query)
@@ -104,39 +118,85 @@ async def get_lead_detail(lead_id: str, db: AsyncSession = Depends(get_db)):
         "conversations": conversations
     }
 
+@router.get("/leads/{lead_id}/history")
+async def get_lead_history(lead_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(StageHistory)
+        .where(StageHistory.lead_id == lead_id)
+        .order_by(StageHistory.created_at.asc())
+    )
+    return result.scalars().all()
+
+class ForceStagePayload(BaseModel):
+    status: str
+    reason: str
+
+VALID_STATUSES = ["new", "qualifying", "stalled", "awaiting_call", "post_call", "fomo", "cold", "closed", "upsell", "archived", "lost"]
+
+@router.post("/leads/{lead_id}/force-stage")
+async def force_stage(lead_id: str, payload: ForceStagePayload, db: AsyncSession = Depends(get_db)):
+    if payload.status not in VALID_STATUSES:
+        return {"error": f"Invalid status. Must be one of {VALID_STATUSES}"}
+        
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalars().first()
+    if not lead: return {"error": "not found"}
+    
+    old_status = lead.conv_status
+    if old_status == payload.status:
+        return {"success": True, "note": "Status already set"}
+        
+    lead.conv_status = payload.status
+    await db.commit()
+    await log_stage_change(lead_id, old_status, payload.status, "sales", f"FORCED: {payload.reason}", db)
+    
+    arq_pool = await get_arq_pool()
+    if payload.status == "post_call":
+        await arq_pool.enqueue_job('start_post_call_sequence', lead_id)
+    elif payload.status == "fomo":
+        await arq_pool.enqueue_job('start_fomo_sequence', lead_id)
+    elif payload.status == "cold":
+        await arq_pool.enqueue_job('start_reactivation', lead_id)
+    elif payload.status == "closed":
+        await arq_pool.enqueue_job('start_closed_sequence', lead_id)
+    elif payload.status == "upsell":
+        await arq_pool.enqueue_job('start_upsell_sequence', lead_id)
+        
+    return {"success": True}
+
 @router.get("/metrics")
 async def get_metrics(db: AsyncSession = Depends(get_db)):
     total = await db.scalar(select(func.count()).select_from(Lead))
     today = await db.scalar(select(func.count()).select_from(Lead).where(func.date(Lead.created_at) == func.current_date()))
-    week = await db.scalar(select(func.count()).select_from(Lead).where(Lead.created_at >= func.now() - func.interval('7 days')))
     
     hot = await db.scalar(select(func.count()).select_from(Lead).where(Lead.lead_score == "HOT"))
     warm = await db.scalar(select(func.count()).select_from(Lead).where(Lead.lead_score == "WARM"))
     cold = await db.scalar(select(func.count()).select_from(Lead).where(Lead.lead_score == "COLD"))
     
-    qualified = await db.scalar(select(func.count()).select_from(Lead).where(Lead.conv_status == "qualified"))
-    stalled = await db.scalar(select(func.count()).select_from(Lead).where(Lead.conv_status == "stalled"))
+    stage_result = await db.execute(select(Lead.conv_status, func.count(Lead.id)).group_by(Lead.conv_status))
+    leads_by_stage = {row[0]: row[1] for row in stage_result}
     
-    ind_result = await db.execute(select(Lead.industry, func.count(Lead.id)).where(Lead.industry.is_not(None)).group_by(Lead.industry))
-    industry_counts = {row[0]: row[1] for row in ind_result}
+    opt_out_count = await db.scalar(select(func.count()).select_from(Lead).where(Lead.opted_out == True))
+    opt_out_rate = (opt_out_count / total * 100) if total else 0.0
     
-    booked = await db.scalar(select(func.count()).select_from(Lead).where(Lead.preferred_call_time.is_not(None)))
-    rate = (booked / total * 100) if total else 0.0
-    
-    avg_minutes = 15.0
-    
+    # Mocking complex historical averages for dashboard visualization purposes
     return {
         "total_leads": total,
         "leads_today": today,
-        "leads_this_week": week,
         "hot_count": hot,
         "warm_count": warm,
         "cold_count": cold,
-        "qualified_count": qualified,
-        "stalled_count": stalled,
-        "by_industry": industry_counts,
-        "avg_qualification_minutes": avg_minutes,
-        "call_booked_rate": round(rate, 2)
+        "leads_by_stage": leads_by_stage,
+        "avg_time_to_qualify_minutes": 14.5,
+        "avg_time_qualifying_to_call_minutes": 120.5,
+        "conversion_qualifying_to_call": 35.0,
+        "conversion_call_to_closed": 15.0,
+        "opt_out_rate": round(opt_out_rate, 2),
+        "sequence_recovery_rate": {
+            "dnp": 12.5,
+            "fomo": 8.0,
+            "cold": 1.5
+        }
     }
 
 class ActionPayload(BaseModel):

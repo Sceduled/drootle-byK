@@ -22,13 +22,23 @@ export default function LeadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [history, setHistory] = useState([]);
   const [loadingAction, setLoadingAction] = useState(null);
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideStatus, setOverrideStatus] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
   const messagesEndRef = useRef(null);
 
   const fetchLead = async () => {
     try {
       const res = await api.get(`/dashboard/leads/${id}`);
       setData(res.data);
+      try {
+        const histRes = await api.get(`/dashboard/leads/${id}/history`);
+        setHistory(histRes.data);
+      } catch (e) {
+        console.error("Failed to load history", e);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -82,7 +92,83 @@ export default function LeadDetail() {
   const { lead, conversations } = data;
 
   return (
-    <div className="flex h-full">
+    <div className="p-8 max-w-7xl mx-auto flex gap-6">
+      
+      {showOverrideModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-bold mb-4">Override Stage</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Stage</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  value={overrideStatus}
+                  onChange={e => setOverrideStatus(e.target.value)}
+                >
+                  <option value="">Select...</option>
+                  <option value="new">New</option>
+                  <option value="qualifying">Qualifying</option>
+                  <option value="stalled">Stalled</option>
+                  <option value="awaiting_call">Awaiting Call</option>
+                  <option value="post_call">Post Call</option>
+                  <option value="fomo">FOMO</option>
+                  <option value="cold">Cold</option>
+                  <option value="closed">Closed</option>
+                  <option value="upsell">Upsell</option>
+                  <option value="archived">Archived</option>
+                  <option value="lost">Lost</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                <textarea 
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  rows="3"
+                  value={overrideReason}
+                  onChange={e => setOverrideReason(e.target.value)}
+                  placeholder="Why are you manually changing this stage?"
+                />
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <button 
+                  onClick={() => setShowOverrideModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (!overrideStatus || !overrideReason) {
+                      alert("Status and reason are required");
+                      return;
+                    }
+                    setLoadingAction("override");
+                    try {
+                      await api.post(`/dashboard/leads/${id}/force-stage`, {
+                        status: overrideStatus,
+                        reason: overrideReason
+                      });
+                      setShowOverrideModal(false);
+                      setOverrideStatus("");
+                      setOverrideReason("");
+                      await fetchLead();
+                    } catch (err) {
+                      alert(err.response?.data?.error || "Failed");
+                    }
+                    setLoadingAction(null);
+                  }}
+                  disabled={loadingAction === "override"}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                >
+                  Confirm Override
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-96 border-r border-gray-200 bg-white flex flex-col shrink-0">
         <div className="p-6 border-b border-gray-100">
           <button 
@@ -161,10 +247,16 @@ export default function LeadDetail() {
               <button 
                 onClick={() => handleAction('call_now')}
                 disabled={loadingAction}
-                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 group-disabled:bg-gray-300"
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 group-disabled:bg-gray-300 mb-2"
                 title="Only works if Voice is enabled in environment"
               >
                 <Phone size={18} /> Call Now
+              </button>
+              <button 
+                onClick={() => setShowOverrideModal(true)}
+                className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Override Stage
               </button>
             </div>
           </div>
@@ -247,6 +339,44 @@ export default function LeadDetail() {
           })}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Stage History */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-6 overflow-hidden">
+          <div className="border-b border-gray-200 px-6 py-4 bg-gray-50 flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900">Stage History</h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-6">
+              {history.map((item, idx) => (
+                <div key={idx} className="relative flex gap-4">
+                  {idx !== history.length - 1 && (
+                    <div className="absolute top-8 left-[11px] bottom-[-24px] w-px bg-gray-200" />
+                  )}
+                  <div className="mt-1 w-[22px] h-[22px] rounded-full bg-blue-100 border-4 border-white flex-shrink-0 z-10" />
+                  
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-gray-900 capitalize">
+                        {item.from_status ? item.from_status.replace('_', ' ') : 'None'} 
+                        <span className="text-gray-400 mx-1">→</span>
+                        {item.to_status.replace('_', ' ')}
+                      </span>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded uppercase tracking-wider">
+                        {item.triggered_by}
+                      </span>
+                    </div>
+                    {item.notes && <p className="text-sm text-gray-500 mb-1">{item.notes}</p>}
+                    <p className="text-xs text-gray-400">{moment(item.created_at).format('MMM D, YYYY h:mm A')}</p>
+                  </div>
+                </div>
+              ))}
+              {history.length === 0 && (
+                <p className="text-sm text-gray-500">No stage history recorded yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
