@@ -18,6 +18,7 @@ async def log_stage_change(
             triggered_by=triggered_by,
             notes=notes
         )
+    )
     await push_event("stage_changed", str(lead_id), {
         "from_status": from_status,
         "to_status": to_status,
