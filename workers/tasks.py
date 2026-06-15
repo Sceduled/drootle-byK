@@ -248,7 +248,7 @@ async def check_stalled_leads(ctx):
         result = await db.execute(
             select(Lead)
             .where(Lead.conv_status == 'in_progress')
-            .where(Lead.updated_at < text("NOW() - INTERVAL '24 hours'"))
+            .where(Lead.updated_at < text("NOW() - INTERVAL '6 hours'"))
         )
         stalled_leads = result.scalars().all()
         
@@ -257,7 +257,7 @@ async def check_stalled_leads(ctx):
                 select(Conversation)
                 .where(Conversation.lead_id == lead.id)
                 .where(Conversation.role == 'assistant')
-                .where(Conversation.created_at > text("NOW() - INTERVAL '24 hours'"))
+                .where(Conversation.created_at > text("NOW() - INTERVAL '6 hours'"))
             )
             already_sent = check_res.scalars().first()
             if already_sent: continue
@@ -268,24 +268,24 @@ async def check_stalled_leads(ctx):
             await send_message(lead.phone, msg)
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
             await db.commit()
-            logger.info(f"[{lead.id}] Sent 24h stalled checking in message")
+            logger.info(f"[{lead.id}] Sent 6h stalled checking in message")
             
         result_48h = await db.execute(
             select(Lead)
             .where(Lead.conv_status == 'in_progress')
-            .where(Lead.updated_at < text("NOW() - INTERVAL '48 hours'"))
+            .where(Lead.updated_at < text("NOW() - INTERVAL '12 hours'"))
         )
         abandoned_leads = result_48h.scalars().all()
         
         for lead in abandoned_leads:
             await arq_pool.enqueue_job('start_dnp_recovery', str(lead.id))
-            logger.info(f"[{lead.id}] Triggered start_dnp_recovery after 48h")
+            logger.info(f"[{lead.id}] Triggered start_dnp_recovery after 12h")
             
         result_2h = await db.execute(
             select(Lead)
             .where(Lead.conv_status == 'in_progress')
             .where(Lead.updated_at < text("NOW() - INTERVAL '2 hours'"))
-            .where(Lead.updated_at > text("NOW() - INTERVAL '24 hours'"))
+            .where(Lead.updated_at > text("NOW() - INTERVAL '6 hours'"))
         )
         stalled_2h_leads = result_2h.scalars().all()
         for lead in stalled_2h_leads:
