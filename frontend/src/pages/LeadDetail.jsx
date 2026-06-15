@@ -27,6 +27,7 @@ export default function LeadDetail() {
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [overrideStatus, setOverrideStatus] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
+  const [outcomeSelection, setOutcomeSelection] = useState("");
   const messagesEndRef = useRef(null);
 
   const fetchLead = async () => {
@@ -84,7 +85,7 @@ export default function LeadDetail() {
         setLoadingAction(null);
       }
     }
-    e.target.value = ""; // Reset dropdown
+    setOutcomeSelection(""); // Reset dropdown
   };
 
   if (!data) return <div className="p-8 text-center text-gray-500">Loading...</div>;
@@ -201,10 +202,10 @@ export default function LeadDetail() {
               <div className="mb-2">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Log Call Outcome</label>
                 <select 
-                  className="w-full bg-white/[0.02] border border-white/[0.05] text-white text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-2.5 disabled:opacity-50 appearance-none [&>option]:bg-[#0f0f13] [&>option]:text-white"
+                  className="w-full bg-white/[0.02] border border-white/[0.05] text-white text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-2.5 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white"
                   onChange={handleOutcomeSelect}
+                  value={outcomeSelection}
                   disabled={loadingAction === "outcome"}
-                  defaultValue=""
                 >
                   <option value="" disabled>Select outcome...</option>
                   {CALL_OUTCOMES.map(o => (
@@ -213,13 +214,6 @@ export default function LeadDetail() {
                 </select>
               </div>
             )}
-            <button 
-              onClick={() => handleAction('mark_closed')}
-              disabled={loadingAction || lead.conv_status === 'closed'}
-              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium py-2.5 px-4 rounded-lg transition-colors text-sm disabled:opacity-50 border border-emerald-500/20"
-            >
-              Mark Closed
-            </button>
             {lead.conv_status === 'closed' && (
               <button 
                 onClick={() => handleAction('start_upsell')}
