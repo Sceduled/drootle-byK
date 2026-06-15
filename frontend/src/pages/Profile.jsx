@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { User, Building2, Bot } from 'lucide-react';
+import { User, Building2 } from 'lucide-react';
 import api from '../lib/api';
 import { motion } from 'framer-motion';
+import mayaAvatarUrl from '../assets/maya.png';
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
@@ -76,8 +77,8 @@ export default function Profile() {
           className="glass-card p-6 md:col-span-2"
         >
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-              <Bot size={24} className="text-blue-400" />
+            <div className="w-12 h-12 rounded-xl border border-blue-500/20 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+              <img src={mayaAvatarUrl} alt="Maya Avatar" className="w-full h-full object-cover" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">AI Agent Persona</h3>
