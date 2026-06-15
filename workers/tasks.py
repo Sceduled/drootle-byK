@@ -353,7 +353,7 @@ If you cannot parse it, return: UNABLE_TO_PARSE
         arq_pool = ctx.get('redis')
         
         if reminder_time < datetime.now(parsed_datetime.tzinfo):
-            await arq_pool.enqueue_job('send_call_reminder', str(lead.id))
+            logger.info(f"[{lead_id}] Reminder time {reminder_time} is in the past, skipping immediate reminder to avoid duplicate alerts.")
         else:
             await arq_pool.enqueue_job('send_call_reminder', str(lead.id), _defer_until=reminder_time)
             
