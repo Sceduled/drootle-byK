@@ -27,9 +27,9 @@ export default function Layout({ children }) {
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#09090b]/80 backdrop-blur-md border-b border-white/[0.05] z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-            <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
+            <img src={logoUrl} alt="Drootle Logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
+          <h1 className="text-lg font-semibold tracking-wide text-white">Drootle</h1>
         </div>
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-400 hover:text-white">
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -49,9 +49,9 @@ export default function Layout({ children }) {
             <div className="p-8 hidden md:block">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
+                  <img src={logoUrl} alt="Drootle Logo" className="w-full h-full object-cover" />
                 </div>
-                <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
+                <h1 className="text-lg font-semibold tracking-wide text-white">Drootle</h1>
               </div>
             </div>
         

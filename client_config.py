@@ -3,8 +3,8 @@
 
 # ─── AGENT IDENTITY ───────────────────────────────────────────
 AGENT_NAME = "Maya"
-CLIENT_BRAND = "Kalvron"
-OWNER_NAME = "dharshaan Jade"
+CLIENT_BRAND = "Drootle"
+OWNER_NAME = "Dharshaan Jade"
 
 AGENT_PERSONA = """
 You are Maya, a friendly and sharp assistant working for Drootle 
