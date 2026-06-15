@@ -443,14 +443,21 @@ async def escalate_to_sales(ctx, lead_id: str):
 async def start_dnp_recovery(ctx, lead_id: str):
     logger.info(f"[{lead_id}] Executing start_dnp_recovery")
     async with AsyncSessionLocal() as db:
-        can_send, reason = await can_send_message(lead_id, "stalled", 3, db)
-        if not can_send:
-            logger.info(f"[{lead_id}] Skipping start_dnp_recovery: {reason}")
-            return
-            
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         if not lead: return
+        
+        # Accept stalled (from dashboard) or in_progress (from cron)
+        if lead.conv_status not in ["stalled", "in_progress"]:
+            logger.info(f"[{lead_id}] Skipping start_dnp_recovery: status_changed_{lead.conv_status}")
+            return
+            
+        # Check sequence is enabled
+        seq_result = await db.execute(select(SequenceConfig).where(SequenceConfig.sequence_number == 3))
+        seq_config = seq_result.scalars().first()
+        if not seq_config or not seq_config.enabled:
+            logger.info(f"[{lead_id}] Skipping start_dnp_recovery: sequence_3_disabled")
+            return
         
         old_status = lead.conv_status
         lead.conv_status = "stalled"
