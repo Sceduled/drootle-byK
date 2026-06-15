@@ -53,7 +53,7 @@ export default function LeadDetail() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [data?.conversations]);
+  }, [data?.conversations?.length]);
 
   const handleAction = async (action) => {
     setLoadingAction(action);

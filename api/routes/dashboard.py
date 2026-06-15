@@ -270,6 +270,8 @@ async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSessi
         return {"success": True, "next_stage": "awaiting_call"}
         
     elif outcome == "no_show":
+        lead.conv_status = "stalled"
+        await db.commit()
         await log_stage_change(lead_id, old_status, "stalled", "sales", "No show", db)
         await arq_pool.enqueue_job('start_dnp_recovery', lead_id)
         return {"success": True, "next_stage": "stalled"}
