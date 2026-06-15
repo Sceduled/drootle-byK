@@ -257,12 +257,8 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
             lead = result.scalars().first()
 
             if not lead:
-                lead = Lead(phone=norm_phone, conv_status="in_progress")
-                db.add(lead)
-                await db.commit()
-                await db.refresh(lead)
-                await push_event("lead_created", str(lead.id), {"source": "whatsapp_inbound"})
-                logger.info(f"Created ghost lead for {norm_phone}, lead_id: {lead.id}")
+                logger.info(f"Unknown inbound number {norm_phone}, ignoring.")
+                return
 
             # Fetch history
             result = await db.execute(
@@ -287,8 +283,27 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
                     setattr(lead, field, val)
 
             new_status = extraction.get('conv_status')
-            if new_status and lead.conv_status not in ["qualified", "closed"]:
-                lead.conv_status = new_status
+            
+            # Qualification completion check
+            qual_fields = [
+                lead.industry, lead.target_markets, lead.monthly_ad_budget, 
+                lead.ads_experience, lead.pain_point, lead.urgency, lead.preferred_call_time
+            ]
+            just_qualified = False
+            if all(f is not None for f in qual_fields) and lead.conv_status in ["qualifying", "in_progress"]:
+                new_status = "awaiting_call"
+                just_qualified = True
+                
+            from utils.stage_logger import log_stage_change
+            if just_qualified:
+                old_status = lead.conv_status
+                lead.conv_status = "awaiting_call"
+                await log_stage_change(str(lead.id), old_status, "awaiting_call", "ai", "All qualification fields present", db)
+            elif new_status and lead.conv_status not in ["qualified", "closed"]:
+                if new_status != lead.conv_status:
+                    old_status = lead.conv_status
+                    lead.conv_status = new_status
+                    await log_stage_change(str(lead.id), old_status, new_status, "ai", "Status updated by extraction", db)
 
             await db.commit()
 
@@ -296,6 +311,14 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
         target_jid = reply_to_jid or norm_phone
         success = await wa_send(target_jid, reply)
         logger.info(f"[{lead.id}] Reply sent: {success}")
+        
+        arq_pool = await get_arq_pool()
+        if just_qualified:
+            await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
+        elif new_status == "qualified" and lead.conv_status == "qualified":
+            await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
+        elif new_status == "escalate" and lead.conv_status == "escalate":
+            await arq_pool.enqueue_job('escalate_to_sales', str(lead.id))
 
     except Exception as e:
         logger.error(f"Error in handle_inbound_message for {norm_phone}: {e}", exc_info=True)
