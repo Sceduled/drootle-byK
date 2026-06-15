@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, User, LogOut, ToggleRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { LayoutDashboard, Users, User, LogOut, ToggleRight, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import logoUrl from '../assets/logo.jpeg';
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const logout = () => {
     localStorage.removeItem('drootle_token');
@@ -21,20 +23,37 @@ export default function Layout({ children }) {
   return (
     <div className="flex h-screen w-full bg-[#09090b] text-gray-100 overflow-hidden font-sans">
       
-      {/* Floating Sidebar */}
-      <motion.aside 
-        initial={{ x: -20, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="w-64 glass-sidebar flex flex-col shrink-0 relative z-10"
-      >
-        <div className="p-8">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
-            </div>
-            <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#09090b]/80 backdrop-blur-md border-b border-white/[0.05] z-50 flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+            <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
           </div>
+          <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
         </div>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-400 hover:text-white">
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Sidebar */}
+      <AnimatePresence>
+        {(mobileMenuOpen || window.innerWidth >= 768) && (
+          <motion.aside 
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+            className={`w-64 glass-sidebar flex flex-col shrink-0 fixed md:relative z-40 h-full bg-[#09090b] md:bg-transparent ${mobileMenuOpen ? 'pt-16' : ''}`}
+          >
+            <div className="p-8 hidden md:block">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                  <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
+                </div>
+                <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
+              </div>
+            </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
           {navItems.map((item) => {
@@ -44,6 +63,7 @@ export default function Layout({ children }) {
               <Link 
                 key={item.path}
                 to={item.path} 
+                onClick={() => setMobileMenuOpen(false)}
                 className="relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group"
               >
                 {isActive && (
@@ -73,9 +93,11 @@ export default function Layout({ children }) {
           </button>
         </div>
       </motion.aside>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden relative z-10 bg-[#09090b]">
+      <main className="flex-1 overflow-hidden relative z-10 bg-[#09090b] pt-16 md:pt-0">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

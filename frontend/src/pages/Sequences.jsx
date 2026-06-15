@@ -105,7 +105,7 @@ export default function Sequences() {
               }`}
             >
               <div 
-                className={`p-5 flex items-center justify-between ${seq.templates?.length > 0 ? 'cursor-pointer hover:bg-white/[0.02] transition-colors rounded-t-xl' : ''}`}
+                className={`p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 ${seq.templates?.length > 0 ? 'cursor-pointer hover:bg-white/[0.02] transition-colors rounded-t-xl' : ''}`}
                 onClick={() => {
                   if (seq.templates?.length > 0) {
                     setExpandedSeq(expandedSeq === seq.sequence_number ? null : seq.sequence_number);

@@ -93,7 +93,7 @@ export default function LeadDetail() {
   const { lead, conversations } = data;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto flex gap-6">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
       
       {showOverrideModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
@@ -170,7 +170,7 @@ export default function LeadDetail() {
         </div>
       )}
 
-      <div className="w-96 border-r border-white/[0.05] glass-sidebar flex flex-col shrink-0">
+      <div className="w-full md:w-96 border-b md:border-b-0 md:border-r border-white/[0.05] glass-sidebar flex flex-col shrink-0">
         <div className="p-6 border-b border-white/[0.05]">
           <button 
             onClick={() => navigate('/leads')}
