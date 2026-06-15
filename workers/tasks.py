@@ -156,7 +156,23 @@ async def process_buffered_message(ctx, phone: str):
             logger.warning(f"[{lead.id}] lead_score missing, defaulting to WARM")
         
         new_status = extraction.get('conv_status')
-        if lead.conv_status == "stalled" and new_status in ["qualifying", "in_progress", "awaiting_call"]:
+        
+        # Qualification completion check
+        qual_fields = [
+            lead.industry, lead.target_markets, lead.monthly_ad_budget, 
+            lead.ads_experience, lead.pain_point, lead.urgency, lead.preferred_call_time
+        ]
+        just_qualified = False
+        if all(f is not None for f in qual_fields) and lead.conv_status in ["qualifying", "in_progress"]:
+            new_status = "awaiting_call"
+            just_qualified = True
+            
+        if just_qualified:
+            old_status = lead.conv_status
+            lead.conv_status = "awaiting_call"
+            await log_stage_change(str(lead.id), old_status, "awaiting_call", "ai", "All qualification fields present", db)
+            
+        elif lead.conv_status == "stalled" and new_status in ["qualifying", "in_progress", "awaiting_call"]:
             old_status = lead.conv_status
             lead.conv_status = new_status
             await log_stage_change(str(lead.id), old_status, new_status, "ai", "Resumed from stalled", db)
@@ -214,7 +230,9 @@ async def process_buffered_message(ctx, phone: str):
         await redis.delete(f"processing:{phone}")
         
         arq_pool = ctx.get('redis')
-        if new_status == "qualified" and lead.conv_status == "qualified":
+        if just_qualified:
+            await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
+        elif new_status == "qualified" and lead.conv_status == "qualified":
             await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
         elif new_status == "escalate" and lead.conv_status == "escalate":
             await arq_pool.enqueue_job('escalate_to_sales', str(lead.id))
