@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, ToggleRight } from 'lucide-react';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -32,11 +32,11 @@ export default function Layout({ children }) {
             Metrics
           </Link>
           <Link 
-            to="/settings/sequences" 
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname.startsWith('/settings') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
+            to="/sequences" 
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname.startsWith('/sequences') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
           >
-            <Settings size={20} />
-            Settings
+            <ToggleRight size={20} />
+            Sequences
           </Link>
         </nav>
 

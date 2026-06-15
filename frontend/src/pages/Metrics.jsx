@@ -13,12 +13,25 @@ const STAGE_COLORS = ['#3b82f6', '#8b5cf6', '#f97316', '#06b6d4', '#14b8a6', '#e
 
 export default function Metrics() {
   const [metrics, setMetrics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get('/dashboard/metrics').then(res => setMetrics(res.data)).catch(console.error);
+    api.get('/dashboard/metrics')
+      .then(res => {
+        setMetrics(res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Metrics API Error:", err);
+        setError(err.message || 'Failed to load metrics');
+        setLoading(false);
+      });
   }, []);
 
-  if (!metrics) return <div className="p-8 text-gray-500">Loading metrics...</div>;
+  if (loading) return <div className="p-8 text-gray-500 flex items-center gap-2">Loading metrics...</div>;
+  if (error) return <div className="p-8 text-red-500 flex items-center gap-2"><XCircle /> {error}</div>;
+  if (!metrics) return <div className="p-8 text-gray-500">No metrics data available.</div>;
 
   const scoreData = [
     { name: 'HOT', value: metrics.hot_count },

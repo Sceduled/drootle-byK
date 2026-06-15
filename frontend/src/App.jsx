@@ -3,7 +3,7 @@ import Login from './pages/Login';
 import Leads from './pages/Leads';
 import LeadDetail from './pages/LeadDetail';
 import Metrics from './pages/Metrics';
-import SequenceSettings from './pages/SequenceSettings';
+import Sequences from './pages/Sequences';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -19,7 +19,7 @@ export default function App() {
         <Route path="/leads" element={<PrivateRoute><Leads /></PrivateRoute>} />
         <Route path="/leads/:id" element={<PrivateRoute><LeadDetail /></PrivateRoute>} />
         <Route path="/metrics" element={<PrivateRoute><Metrics /></PrivateRoute>} />
-        <Route path="/settings/sequences" element={<PrivateRoute><SequenceSettings /></PrivateRoute>} />
+        <Route path="/sequences" element={<PrivateRoute><Sequences /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/leads" />} />
       </Routes>
     </BrowserRouter>
