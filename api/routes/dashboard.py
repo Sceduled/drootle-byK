@@ -16,6 +16,7 @@ from core.config import settings
 from pydantic import BaseModel
 from utils.stage_logger import log_stage_change
 from services.notifications import notify_sales_opt_out
+from client_config import AGENT_NAME, CLIENT_BRAND, OWNER_NAME
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -370,3 +371,11 @@ async def patch_sequence(sequence_number: int, payload: SequencePatchPayload, db
     await db.commit()
     
     return {"success": True, "enabled": seq.enabled}
+
+@router.get("/profile")
+async def get_profile():
+    return {
+        "agent_name": AGENT_NAME,
+        "client_brand": CLIENT_BRAND,
+        "owner_name": OWNER_NAME
+    }

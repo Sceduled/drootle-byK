@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, LogOut, ToggleRight } from 'lucide-react';
+import { LayoutDashboard, Users, User, LogOut, ToggleRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Layout({ children }) {
@@ -14,6 +14,7 @@ export default function Layout({ children }) {
     { name: 'Leads', path: '/leads', icon: Users },
     { name: 'Metrics', path: '/metrics', icon: LayoutDashboard },
     { name: 'Sequences', path: '/sequences', icon: ToggleRight },
+    { name: 'Profile', path: '/profile', icon: User },
   ];
 
   return (
@@ -27,12 +28,10 @@ export default function Layout({ children }) {
       >
         <div className="p-8">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/logo.jpeg" alt="Kalvron Logo" className="w-full h-full object-cover" />
             </div>
-            <h1 className="text-lg font-semibold tracking-wide text-white">LEAD<span className="text-gray-500 font-normal">AI</span></h1>
+            <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
           </div>
         </div>
         
