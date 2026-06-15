@@ -196,7 +196,8 @@ async def process_buffered_message(ctx, phone: str):
             await notify_archived_reengaged(lead)
             
         elif new_status and new_status != lead.conv_status:
-            if lead.conv_status not in ["qualified", "closed"]:
+            prevent_downgrade = lead.conv_status in ["awaiting_call", "post_call", "closed", "upsell", "lost"] and new_status in ["qualifying", "in_progress", "stalled", "new", "cold"]
+            if not prevent_downgrade:
                 old_status = lead.conv_status
                 lead.conv_status = new_status
                 await log_stage_change(str(lead.id), old_status, new_status, "ai", "Status updated by extraction", db)
