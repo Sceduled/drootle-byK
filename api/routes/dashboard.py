@@ -1,5 +1,7 @@
 import csv
 import io
+import json
+from client_config import SEQUENCE_MESSAGES
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -301,6 +303,18 @@ SEQUENCES_DEF = [
     {"sequence_number": 9, "sequence_name": "Upsell & Cross-Sell"},
 ]
 
+SEQ_MAPPING = {
+    1: ["first_touch"],
+    2: ["qual_nudge_24h"],
+    3: ["dnp_day1", "dnp_day2", "dnp_day3", "dnp_day5"],
+    4: ["call_reminder_lead", "call_reminder_sales"],
+    5: ["post_call_day1", "post_call_day2", "post_call_day3", "post_call_day5", "post_call_day7"],
+    6: ["fomo_day1", "fomo_day2", "fomo_day3"],
+    7: ["reactivation_week2", "reactivation_week4", "reactivation_week6", "reactivation_week8", "reactivation_week12"],
+    8: ["closed_day3", "closed_day14", "closed_day30", "closed_day35"],
+    9: ["upsell_day1", "upsell_day4", "upsell_day7"],
+}
+
 @router.get("/sequences")
 async def get_sequences(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(SequenceConfig).order_by(SequenceConfig.sequence_number.asc()))
@@ -320,7 +334,21 @@ async def get_sequences(db: AsyncSession = Depends(get_db)):
         result = await db.execute(select(SequenceConfig).order_by(SequenceConfig.sequence_number.asc()))
         sequences = result.scalars().all()
         
-    return sequences
+    result_list = []
+    for s in sequences:
+        s_dict = {
+            "sequence_number": s.sequence_number,
+            "sequence_name": s.sequence_name,
+            "enabled": s.enabled,
+            "templates": []
+        }
+        keys = SEQ_MAPPING.get(s.sequence_number, [])
+        for k in keys:
+            if k in SEQUENCE_MESSAGES:
+                s_dict["templates"].append({"key": k, "content": SEQUENCE_MESSAGES[k]})
+        result_list.append(s_dict)
+        
+    return result_list
 
 class SequencePatchPayload(BaseModel):
     enabled: bool
