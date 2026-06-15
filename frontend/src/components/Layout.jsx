@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, User, LogOut, ToggleRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logoUrl from '../assets/logo.jpeg';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -29,7 +30,7 @@ export default function Layout({ children }) {
         <div className="p-8">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src="/logo.jpeg" alt="Kalvron Logo" className="w-full h-full object-cover" />
+              <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
           </div>
