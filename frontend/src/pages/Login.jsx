@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import api from '../lib/api';
 
 export default function Login() {
@@ -26,20 +27,40 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-sm border border-gray-100">
-        <div className="mb-8 text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Lead Ops</h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to manage leads</p>
+    <div className="min-h-screen flex items-center justify-center bg-[#09090b] py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="max-w-md w-full space-y-8 glass-card p-10 relative overflow-hidden"
+      >
+        <div className="mb-8 text-center relative z-10">
+          <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mx-auto mb-6">
+            <svg className="w-6 h-6 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-bold text-white tracking-tight">Lead<span className="text-gray-500 font-normal">AI</span></h2>
+          <p className="mt-3 text-sm text-gray-500">Sign in to your workspace</p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          {error && <div className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-md">{error}</div>}
-          <div className="rounded-md shadow-sm space-y-4">
+        
+        <form className="mt-8 space-y-6 relative z-10" onSubmit={handleLogin}>
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 py-3 rounded-lg font-medium"
+            >
+              {error}
+            </motion.div>
+          )}
+          
+          <div className="space-y-4">
             <div>
               <input
                 type="text"
                 required
-                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 sm:text-sm"
+                className="appearance-none rounded-xl relative block w-full px-4 py-3.5 bg-white/[0.02] border border-white/[0.05] placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 sm:text-sm transition-all"
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -49,7 +70,7 @@ export default function Login() {
               <input
                 type="password"
                 required
-                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 sm:text-sm"
+                className="appearance-none rounded-xl relative block w-full px-4 py-3.5 bg-white/[0.02] border border-white/[0.05] placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 sm:text-sm transition-all"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -57,17 +78,22 @@ export default function Login() {
             </div>
           </div>
 
-          <div>
+          <div className="pt-2">
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors disabled:opacity-50"
+              className="group relative w-full flex justify-center py-3.5 px-4 text-sm font-semibold rounded-xl text-black bg-white hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                  Signing in...
+                </span>
+              ) : 'Sign in'}
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

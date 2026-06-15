@@ -95,14 +95,14 @@ export default function LeadDetail() {
     <div className="p-8 max-w-7xl mx-auto flex gap-6">
       
       {showOverrideModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-bold mb-4">Override Stage</h3>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="glass-card max-w-md w-full p-6 border border-white/[0.1]">
+            <h3 className="text-lg font-semibold text-white mb-4">Override Stage</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New Stage</label>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">New Stage</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  className="w-full bg-white/[0.02] border border-white/[0.05] rounded-lg p-2.5 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-white/20 [&>option]:bg-[#0f0f13] [&>option]:text-white"
                   value={overrideStatus}
                   onChange={e => setOverrideStatus(e.target.value)}
                 >
@@ -121,9 +121,9 @@ export default function LeadDetail() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Reason</label>
                 <textarea 
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  className="w-full bg-white/[0.02] border border-white/[0.05] rounded-lg p-2.5 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-white/20 placeholder-gray-600"
                   rows="3"
                   value={overrideReason}
                   onChange={e => setOverrideReason(e.target.value)}
@@ -133,7 +133,7 @@ export default function LeadDetail() {
               <div className="flex gap-3 justify-end mt-6">
                 <button 
                   onClick={() => setShowOverrideModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-gray-400 bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -159,7 +159,7 @@ export default function LeadDetail() {
                     setLoadingAction(null);
                   }}
                   disabled={loadingAction === "override"}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-black bg-white hover:bg-gray-200 rounded-lg disabled:opacity-50 transition-colors"
                 >
                   Confirm Override
                 </button>
@@ -169,39 +169,39 @@ export default function LeadDetail() {
         </div>
       )}
 
-      <div className="w-96 border-r border-gray-200 bg-white flex flex-col shrink-0">
-        <div className="p-6 border-b border-gray-100">
+      <div className="w-96 border-r border-white/[0.05] glass-sidebar flex flex-col shrink-0">
+        <div className="p-6 border-b border-white/[0.05]">
           <button 
             onClick={() => navigate('/leads')}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors mb-6 text-sm font-medium"
+            className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors mb-6 text-sm font-medium"
           >
             <ArrowLeft size={16} /> Back to Leads
           </button>
           
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{lead.name || 'Unknown Name'}</h2>
-              <p className="text-gray-500 flex items-center gap-2 mt-1">
+              <h2 className="text-xl font-bold text-white">{lead.name || 'Unknown Name'}</h2>
+              <p className="text-gray-400 flex items-center gap-2 mt-1 text-sm">
                 <Phone size={14} /> {lead.phone}
               </p>
             </div>
             {lead.lead_score && (
-              <span className="bg-gray-100 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-200">
+              <span className="bg-white/[0.03] px-3 py-1.5 rounded text-[11px] font-semibold tracking-widest uppercase border border-white/[0.05] text-white">
                 {scoreEmoji[lead.lead_score]} {lead.lead_score}
               </span>
             )}
           </div>
           
-          <span className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs uppercase tracking-wider font-medium mb-6">
+          <span className="inline-block bg-white/[0.03] text-gray-300 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold mb-6 border border-white/[0.05]">
             STATUS: {lead.conv_status}
           </span>
 
           <div className="space-y-3 mt-4 flex flex-col">
             {lead.conv_status === 'awaiting_call' && (
               <div className="mb-2">
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Log Call Outcome</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Log Call Outcome</label>
                 <select 
-                  className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 disabled:opacity-50"
+                  className="w-full bg-white/[0.02] border border-white/[0.05] text-white text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-2.5 disabled:opacity-50 appearance-none [&>option]:bg-[#0f0f13] [&>option]:text-white"
                   onChange={handleOutcomeSelect}
                   disabled={loadingAction === "outcome"}
                   defaultValue=""
@@ -216,7 +216,7 @@ export default function LeadDetail() {
             <button 
               onClick={() => handleAction('mark_closed')}
               disabled={loadingAction || lead.conv_status === 'closed'}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium py-2.5 px-4 rounded-lg transition-colors text-sm disabled:opacity-50 border border-emerald-500/20"
             >
               Mark Closed
             </button>
@@ -224,7 +224,7 @@ export default function LeadDetail() {
               <button 
                 onClick={() => handleAction('start_upsell')}
                 disabled={loadingAction}
-                className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
+                className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 font-medium py-2.5 px-4 rounded-lg transition-colors text-sm disabled:opacity-50 border border-purple-500/20"
               >
                 Mark Upsell Opportunity
               </button>
@@ -232,14 +232,14 @@ export default function LeadDetail() {
             <button 
               onClick={() => handleAction('mark_hot')}
               disabled={loadingAction || lead.lead_score === 'HOT'}
-              className="bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
+              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium py-2.5 px-4 rounded-lg transition-colors text-sm disabled:opacity-50 border border-red-500/20"
             >
               Mark HOT
             </button>
             <button 
               onClick={() => handleAction('renotify_sales')}
               disabled={loadingAction}
-              className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm disabled:opacity-50"
+              className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-medium py-2.5 px-4 rounded-lg transition-colors text-sm disabled:opacity-50 border border-blue-500/20"
             >
               Re-notify Sales
             </button>
@@ -247,14 +247,14 @@ export default function LeadDetail() {
               <button 
                 onClick={() => handleAction('call_now')}
                 disabled={loadingAction}
-                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 group-disabled:bg-gray-300 mb-2"
+                className="w-full bg-white hover:bg-gray-200 text-black font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 group-disabled:bg-gray-300 mb-2"
                 title="Only works if Voice is enabled in environment"
               >
                 <Phone size={18} /> Call Now
               </button>
               <button 
                 onClick={() => setShowOverrideModal(true)}
-                className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                className="w-full bg-white/[0.03] hover:bg-white/[0.05] text-gray-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm border border-white/[0.05]"
               >
                 Override Stage
               </button>
@@ -262,54 +262,54 @@ export default function LeadDetail() {
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-6 overflow-y-auto space-y-8 flex-1">
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Company Details</h3>
-            <div className="space-y-3">
-              <div className="flex gap-3 text-sm"><Building2 size={16} className="text-gray-400 mt-0.5" /> <span className="text-gray-900">{lead.company_name || '—'}</span></div>
-              <div className="flex gap-3 text-sm"><Target size={16} className="text-gray-400 mt-0.5" /> <span className="text-gray-900 capitalize">{lead.industry?.replace('_', ' ') || '—'}</span></div>
-              <div className="flex gap-3 text-sm"><DollarSign size={16} className="text-gray-400 mt-0.5" /> <span className="text-gray-900">{lead.monthly_ad_budget?.replace('_', ' ') || '—'}</span></div>
+            <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Company Details</h3>
+            <div className="space-y-4">
+              <div className="flex gap-3 text-sm items-center"><Building2 size={16} className="text-gray-500" /> <span className="text-gray-300">{lead.company_name || '—'}</span></div>
+              <div className="flex gap-3 text-sm items-center"><Target size={16} className="text-gray-500" /> <span className="text-gray-300 capitalize">{lead.industry?.replace('_', ' ') || '—'}</span></div>
+              <div className="flex gap-3 text-sm items-center"><DollarSign size={16} className="text-gray-500" /> <span className="text-gray-300">{lead.monthly_ad_budget?.replace('_', ' ') || '—'}</span></div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Qualification Info</h3>
+            <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Qualification Info</h3>
             <div className="space-y-4 text-sm">
               <div>
-                <p className="text-gray-500 mb-1">Pain Point</p>
-                <p className="text-gray-900 bg-gray-50 p-2 rounded border border-gray-100">{lead.pain_point || '—'}</p>
+                <p className="text-gray-500 mb-1 text-xs">Pain Point</p>
+                <p className="text-gray-300 bg-white/[0.02] p-3 rounded-lg border border-white/[0.05]">{lead.pain_point || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 mb-1">Target Markets</p>
-                <p className="text-gray-900">{lead.target_markets?.join(', ') || '—'}</p>
+                <p className="text-gray-500 mb-1 text-xs">Target Markets</p>
+                <p className="text-gray-300">{lead.target_markets?.join(', ') || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 mb-1">Urgency</p>
-                <p className="text-gray-900">{lead.urgency || '—'}</p>
+                <p className="text-gray-500 mb-1 text-xs">Urgency</p>
+                <p className="text-gray-300">{lead.urgency || '—'}</p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Logistics</h3>
-            <div className="flex gap-3 text-sm">
-              <Clock size={16} className="text-gray-400 mt-0.5" /> 
+            <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Logistics</h3>
+            <div className="flex gap-3 text-sm items-start">
+              <Clock size={16} className="text-gray-500 mt-0.5" /> 
               <div>
-                <p className="text-gray-500 mb-1">Preferred Call Time</p>
-                <p className="text-gray-900">{lead.preferred_call_time || '—'}</p>
+                <p className="text-gray-500 mb-1 text-xs">Preferred Call Time</p>
+                <p className="text-gray-300">{lead.preferred_call_time || '—'}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-gray-50">
-        <div className="p-6 border-b border-gray-200 bg-white">
-          <h2 className="text-lg font-bold text-gray-900">Conversation History</h2>
+      <div className="flex-1 flex flex-col bg-[#09090b] relative">
+        <div className="p-6 border-b border-white/[0.05] bg-transparent relative z-10 backdrop-blur-sm">
+          <h2 className="text-lg font-semibold text-white tracking-wide">Conversation History</h2>
           <p className="text-sm text-gray-500">Live chat view</p>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 relative z-10">
           {conversations.map((msg, idx) => {
             const isSystem = msg.role === 'system';
             const isAgent = msg.role === 'assistant';
@@ -318,7 +318,7 @@ export default function LeadDetail() {
             if (isSystem) {
               return (
                 <div key={idx} className="flex justify-center">
-                  <div className="bg-gray-200 text-gray-600 text-xs px-4 py-2 rounded-lg max-w-lg text-center font-mono whitespace-pre-wrap">
+                  <div className="bg-white/[0.02] border border-white/[0.05] text-gray-400 text-[11px] px-4 py-2 rounded-lg max-w-lg text-center font-mono whitespace-pre-wrap">
                     {msg.content}
                     <div className="mt-1 opacity-50">{moment(msg.created_at).format('MMM D, h:mm A')}</div>
                   </div>
@@ -328,9 +328,9 @@ export default function LeadDetail() {
 
             return (
               <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-xl rounded-2xl px-5 py-3 ${isUser ? 'bg-gray-900 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-900 rounded-bl-none shadow-sm'}`}>
-                  <div className="whitespace-pre-wrap text-[15px] leading-relaxed">{msg.content}</div>
-                  <div className={`text-[11px] mt-2 ${isUser ? 'text-gray-400' : 'text-gray-400'}`}>
+                <div className={`max-w-xl rounded-2xl px-5 py-3 ${isUser ? 'bg-blue-600 text-white rounded-br-none' : 'bg-[#18181b] border border-white/[0.05] text-gray-200 rounded-bl-none shadow-sm'}`}>
+                  <div className="whitespace-pre-wrap text-[14px] leading-relaxed">{msg.content}</div>
+                  <div className={`text-[10px] mt-2 font-medium tracking-wide ${isUser ? 'text-blue-200' : 'text-gray-500'}`}>
                     {moment(msg.created_at).format('h:mm A')}
                   </div>
                 </div>
@@ -341,32 +341,32 @@ export default function LeadDetail() {
         </div>
 
         {/* Stage History */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-6 overflow-hidden">
-          <div className="border-b border-gray-200 px-6 py-4 bg-gray-50 flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900">Stage History</h3>
+        <div className="glass-card m-6 overflow-hidden relative z-10">
+          <div className="border-b border-white/[0.05] px-6 py-4 bg-white/[0.01] flex items-center gap-2">
+            <h3 className="font-semibold text-white tracking-wide">Stage History</h3>
           </div>
           <div className="p-6">
             <div className="space-y-6">
               {history.map((item, idx) => (
                 <div key={idx} className="relative flex gap-4">
                   {idx !== history.length - 1 && (
-                    <div className="absolute top-8 left-[11px] bottom-[-24px] w-px bg-gray-200" />
+                    <div className="absolute top-8 left-[11px] bottom-[-24px] w-px bg-white/[0.1]" />
                   )}
-                  <div className="mt-1 w-[22px] h-[22px] rounded-full bg-blue-100 border-4 border-white flex-shrink-0 z-10" />
+                  <div className="mt-1 w-[22px] h-[22px] rounded-full bg-blue-500/20 border-4 border-[#0f0f13] flex-shrink-0 z-10" />
                   
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-gray-900 capitalize">
+                      <span className="text-sm font-semibold text-gray-200 capitalize">
                         {item.from_status ? item.from_status.replace('_', ' ') : 'None'} 
-                        <span className="text-gray-400 mx-1">→</span>
-                        {item.to_status.replace('_', ' ')}
+                        <span className="text-gray-500 mx-1">→</span>
+                        <span className="text-white">{item.to_status.replace('_', ' ')}</span>
                       </span>
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded uppercase tracking-wider">
+                      <span className="text-[10px] bg-white/[0.05] border border-white/[0.05] text-gray-400 px-2 py-0.5 rounded uppercase tracking-widest font-semibold">
                         {item.triggered_by}
                       </span>
                     </div>
-                    {item.notes && <p className="text-sm text-gray-500 mb-1">{item.notes}</p>}
-                    <p className="text-xs text-gray-400">{moment(item.created_at).format('MMM D, YYYY h:mm A')}</p>
+                    {item.notes && <p className="text-sm text-gray-400 mb-1">{item.notes}</p>}
+                    <p className="text-xs text-gray-500">{moment(item.created_at).format('MMM D, YYYY h:mm A')}</p>
                   </div>
                 </div>
               ))}

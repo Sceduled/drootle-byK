@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings, LogOut, ToggleRight } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ToggleRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -9,51 +10,80 @@ export default function Layout({ children }) {
     window.location.href = '/login';
   };
 
+  const navItems = [
+    { name: 'Leads', path: '/leads', icon: Users },
+    { name: 'Metrics', path: '/metrics', icon: LayoutDashboard },
+    { name: 'Sequences', path: '/sequences', icon: ToggleRight },
+  ];
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <div className="w-64 bg-gray-900 text-white flex flex-col shrink-0">
-        <div className="p-6">
-          <h1 className="text-xl font-bold tracking-wider">LEAD<span className="text-gray-400 font-normal"> AI</span></h1>
+    <div className="flex h-screen w-full bg-[#09090b] text-gray-100 overflow-hidden font-sans">
+      
+      {/* Floating Sidebar */}
+      <motion.aside 
+        initial={{ x: -20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="w-64 glass-sidebar flex flex-col shrink-0 relative z-10"
+      >
+        <div className="p-8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-semibold tracking-wide text-white">LEAD<span className="text-gray-500 font-normal">AI</span></h1>
+          </div>
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
-          <Link 
-            to="/leads" 
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname.startsWith('/leads') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
-          >
-            <Users size={20} />
-            Leads
-          </Link>
-          <Link 
-            to="/metrics" 
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname === '/metrics' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
-          >
-            <LayoutDashboard size={20} />
-            Metrics
-          </Link>
-          <Link 
-            to="/sequences" 
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname.startsWith('/sequences') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}`}
-          >
-            <ToggleRight size={20} />
-            Sequences
-          </Link>
+          {navItems.map((item) => {
+            const isActive = location.pathname.startsWith(item.path);
+            const Icon = item.icon;
+            return (
+              <Link 
+                key={item.path}
+                to={item.path} 
+                className="relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group"
+              >
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeTab" 
+                    className="absolute inset-0 bg-white/[0.05] border border-white/[0.05] rounded-xl"
+                    initial={false}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <Icon size={18} className={`relative z-10 transition-colors duration-300 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`} />
+                <span className={`relative z-10 font-medium transition-colors duration-300 text-sm ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                  {item.name}
+                </span>
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 mt-auto border-t border-white/[0.05]">
           <button 
             onClick={logout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-left rounded-lg text-gray-400 hover:bg-gray-800/50 hover:text-white transition-colors"
+            className="flex items-center gap-3 px-4 py-3 w-full text-left rounded-xl text-gray-500 hover:bg-white/[0.03] hover:text-gray-200 transition-all duration-300"
           >
-            <LogOut size={20} />
-            Logout
+            <LogOut size={18} />
+            <span className="font-medium text-sm">Logout</span>
           </button>
         </div>
-      </div>
+      </motion.aside>
 
-      <div className="flex-1 overflow-auto bg-gray-50">
-        {children}
-      </div>
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-hidden relative z-10 bg-[#09090b]">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="h-full w-full overflow-auto"
+        >
+          {children}
+        </motion.div>
+      </main>
     </div>
   );
 }
