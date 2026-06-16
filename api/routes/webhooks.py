@@ -217,6 +217,10 @@ async def waha_webhook(request: Request):
         logger.error(f"WAHA webhook error: {e}", exc_info=True)
         return {"status": "error", "error": str(e)}
 
+@router.get("/waha/debug")
+async def debug_waha():
+    return {"last_payloads": last_payloads}
+
 
 async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: str = None):
     """Process inbound message directly — no ARQ worker needed."""
