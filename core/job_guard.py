@@ -21,7 +21,22 @@ async def can_send_message(lead_id: str, required_status: str, sequence_number: 
     seq_result = await db.execute(select(SequenceConfig).where(SequenceConfig.sequence_number == sequence_number))
     seq_config = seq_result.scalars().first()
     
-    if not seq_config or not seq_config.enabled:
+    if not seq_config:
+        # Auto-create default sequence config if missing
+        default_names = {
+            1: "First Touch", 2: "AI Qualification", 3: "DNP Recovery",
+            4: "Awaiting Call", 5: "Post-Call Validation", 6: "FOMO Creation",
+            7: "Lead Recovery / Reactivation", 8: "Closed & Referral Engine", 9: "Upsell & Cross-Sell"
+        }
+        seq_config = SequenceConfig(
+            sequence_number=sequence_number,
+            sequence_name=default_names.get(sequence_number, f"Sequence {sequence_number}"),
+            enabled=True
+        )
+        db.add(seq_config)
+        await db.commit()
+    
+    if not seq_config.enabled:
         return False, f"Sequence {sequence_number} is disabled"
         
     return True, "OK"
