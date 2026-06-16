@@ -259,6 +259,7 @@ async def lead_action(lead_id: str, payload: ActionPayload, db: AsyncSession = D
 class CallOutcomePayload(BaseModel):
     outcome: str
     notes: Optional[str] = None
+    last_updated_at: str | None = None
 
 @router.post("/leads/{lead_id}/call-outcome")
 async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSession = Depends(get_db)):
@@ -267,6 +268,19 @@ async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSessi
     if not lead: return {"error": "not found"}
     
     old_status = lead.conv_status
+    
+    # Optimistic Concurrency Control
+    if payload.last_updated_at:
+        from datetime import timezone, datetime
+        db_updated = lead.updated_at.replace(tzinfo=timezone.utc) if lead.updated_at.tzinfo is None else lead.updated_at
+        client_updated = datetime.fromisoformat(payload.last_updated_at.replace("Z", "+00:00"))
+        if db_updated > client_updated:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=409,
+                detail="Another user just modified this lead. Please refresh to see the latest data."
+            )
+            
     arq_pool = await get_arq_pool()
     outcome = payload.outcome
     

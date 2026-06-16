@@ -111,17 +111,34 @@ export default function Leads() {
     const { leadId, outcome } = modalConfig;
     setModalConfig({ isOpen: false });
     setOutcomeUpdating(leadId);
+    
+    const targetLead = leads.find(l => l.id === leadId);
+    
     try {
-      await api.post(`/dashboard/leads/${leadId}/call-outcome`, { outcome, notes });
+      await api.post(`/dashboard/leads/${leadId}/call-outcome`, { 
+        outcome, 
+        notes,
+        last_updated_at: targetLead?.updated_at || null
+      });
       await fetchLeads();
       setExpandedRowId(null);
     } catch (err) {
-      setModalConfig({
-        isOpen: true,
-        type: 'alert',
-        title: 'Error',
-        description: err.response?.data?.error || "Failed to update outcome."
-      });
+      if (err.response?.status === 409) {
+        setModalConfig({
+          isOpen: true,
+          type: 'alert',
+          title: 'Conflict Detected',
+          description: err.response.data.detail
+        });
+        await fetchLeads(); // Auto-refresh to show latest data
+      } else {
+        setModalConfig({
+          isOpen: true,
+          type: 'alert',
+          title: 'Error',
+          description: err.response?.data?.error || "Failed to update outcome."
+        });
+      }
     } finally {
       setOutcomeUpdating(null);
     }
