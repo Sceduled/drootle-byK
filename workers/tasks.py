@@ -247,7 +247,7 @@ async def check_stalled_leads(ctx):
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Lead)
-            .where(Lead.conv_status == 'in_progress')
+            .where(Lead.conv_status.in_(['in_progress', 'qualifying']))
             .where(Lead.updated_at < text("NOW() - INTERVAL '6 hours'"))
         )
         stalled_leads = result.scalars().all()
@@ -272,7 +272,7 @@ async def check_stalled_leads(ctx):
             
         result_48h = await db.execute(
             select(Lead)
-            .where(Lead.conv_status == 'in_progress')
+            .where(Lead.conv_status.in_(['in_progress', 'qualifying']))
             .where(Lead.updated_at < text("NOW() - INTERVAL '12 hours'"))
         )
         abandoned_leads = result_48h.scalars().all()
@@ -283,7 +283,7 @@ async def check_stalled_leads(ctx):
             
         result_2h = await db.execute(
             select(Lead)
-            .where(Lead.conv_status == 'in_progress')
+            .where(Lead.conv_status.in_(['in_progress', 'qualifying']))
             .where(Lead.updated_at < text("NOW() - INTERVAL '2 hours'"))
             .where(Lead.updated_at > text("NOW() - INTERVAL '6 hours'"))
         )
@@ -447,8 +447,8 @@ async def start_dnp_recovery(ctx, lead_id: str):
         lead = result.scalars().first()
         if not lead: return
         
-        # Accept stalled (from dashboard) or in_progress (from cron)
-        if lead.conv_status not in ["stalled", "in_progress"]:
+        # Accept stalled (from dashboard) or in_progress/qualifying (from cron)
+        if lead.conv_status not in ["stalled", "in_progress", "qualifying"]:
             logger.info(f"[{lead_id}] Skipping start_dnp_recovery: status_changed_{lead.conv_status}")
             return
             
