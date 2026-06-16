@@ -30,7 +30,7 @@ No prose. No markdown. No code fences. Raw JSON only.
   "ads_experience": null,
   "pain_point": null,
   "urgency": null,
-  "preferred_call_time": null,
+  "preferred_call_time": null, // Extract the MOST RECENTLY agreed upon time if there are multiple
   "lead_score": null,
   "conv_status": null,
   "opted_out": false,
@@ -46,6 +46,8 @@ close_intent = true if lead says anything like:
 "yes", "let's go", "I'm in", "send me the proposal",
 "sounds good", "ready to start", "when can we begin",
 "let's do it", "move forward"
+
+preferred_call_time = IF the lead reschedules or suggests a new time, ALWAYS extract the NEWEST time from the bottom of the chat. Ignore older, canceled times.
 
 referral_detected = true if lead mentions another person's name or says:
 "my friend", "my colleague", "I know someone", "you should talk to"
