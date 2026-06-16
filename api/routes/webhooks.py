@@ -177,9 +177,20 @@ async def process_waha_message(payload: dict):
         if phone and isinstance(phone, str) and '@' in phone:
             phone = phone.split('@')[0]
 
-        if not phone or not message_text:
-            logger.warning(f"Missing phone or message_text — phone={phone!r} text={message_text!r}")
+        msg_type = payload.get("type")
+        if not msg_type and "payload" in payload:
+            msg_type = payload["payload"].get("type")
+
+        if not phone:
+            logger.warning("Missing phone")
             return
+
+        if not message_text:
+            if msg_type in ['image', 'video', 'audio', 'ptt', 'document', 'location', 'vcard', 'sticker']:
+                message_text = "[System Note: The user sent a media attachment, voice note, or location pin. You cannot view or listen to it. Please politely inform them that you are a text-only AI and ask them to type out their message.]"
+            else:
+                logger.warning(f"Missing message_text — phone={phone!r} text={message_text!r} type={msg_type!r}")
+                return
 
         logger.info(f"Inbound from {phone} (JID: {original_jid}): {message_text!r}")
         await handle_inbound_message(phone, message_text, reply_to_jid=original_jid)
