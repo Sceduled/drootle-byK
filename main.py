@@ -57,6 +57,15 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to apply migrations: {e}")
 
+    try:
+        from core.database import engine
+        from sqlalchemy import text
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_summary TEXT;"))
+            logger.info("Force-added ai_summary column.")
+    except Exception as e:
+        logger.error(f"Failed to force-add column: {e}")
+
     logger.info("Testing PostgreSQL connection...")
     db_ok = await test_db()
     logger.info(f"PostgreSQL connection: {'OK' if db_ok else 'FAILED'}")
