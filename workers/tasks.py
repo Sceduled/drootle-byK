@@ -931,6 +931,35 @@ async def check_fomo_complete(ctx, lead_id: str):
     arq_pool = ctx.get('redis')
     await arq_pool.enqueue_job('start_reactivation', lead_id, _defer_by=timedelta(days=14))
 
+@safe_task
+async def generate_lead_summary(ctx, lead_id: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        
+        conv_res = await db.execute(
+            select(Conversation).where(Conversation.lead_id == lead_id).order_by(Conversation.created_at)
+        )
+        conversations = conv_res.scalars().all()
+        
+        if not conversations: return
+        
+        history_text = "\n".join([f"{msg.role}: {msg.content}" for msg in conversations])
+        prompt = f"""You are an expert sales assistant. Read the following WhatsApp conversation between an AI assistant and a lead.
+Write a highly professional, 2-to-3 sentence executive summary of the lead's situation.
+Focus on their pain points, what they are looking for, their budget (if mentioned), and timeline (if mentioned).
+Do NOT write 'The lead says...' or 'The AI asked...'. Just state the facts directly as a professional CRM report.
+
+Conversation:
+{history_text}
+"""
+        summary = await call_gpt_mini(prompt)
+        if summary and summary != "UNABLE_TO_PARSE":
+            lead.ai_summary = summary
+            await db.commit()
+            logger.info(f"[{lead_id}] Generated AI summary.")
+
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     functions = [
@@ -938,6 +967,7 @@ class WorkerSettings:
         process_buffered_message,
         ask_for_reschedule,
         post_qualification_actions,
+        generate_lead_summary,
         schedule_call_reminder,
         send_call_reminder,
         escalate_to_sales,

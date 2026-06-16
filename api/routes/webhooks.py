@@ -316,6 +316,7 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
         arq_pool = await get_arq_pool()
         if just_qualified:
             await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
+            await arq_pool.enqueue_job('generate_lead_summary', str(lead.id))
         elif new_status == "qualified" and lead.conv_status == "qualified":
             await arq_pool.enqueue_job('post_qualification_actions', str(lead.id))
         elif new_status == "escalate" and lead.conv_status == "escalate":

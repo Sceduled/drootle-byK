@@ -28,6 +28,7 @@ class Lead(Base):
     pain_point = Column(Text, nullable=True)
     urgency = Column(Text, nullable=True)
     preferred_call_time = Column(Text, nullable=True)
+    ai_summary = Column(Text, nullable=True)
 
     # Scoring & status
     lead_score = Column(Text, nullable=True, index=True)

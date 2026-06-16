@@ -235,7 +235,9 @@ export default function Leads() {
                   
                   // Construct Summary Logic
                   let aiSummary = "";
-                  if (lead.pain_point || lead.urgency || lead.budget) {
+                  if (lead.ai_summary) {
+                    aiSummary = lead.ai_summary;
+                  } else if (lead.pain_point || lead.urgency || lead.budget) {
                     const parts = [];
                     if (lead.pain_point) parts.push(`Struggling with ${lead.pain_point.toLowerCase()}.`);
                     if (lead.budget) parts.push(`Budget is around ${lead.budget}.`);
