@@ -74,17 +74,31 @@ export default function LeadDetail() {
     const outcome = e.target.value;
     if (!outcome) return;
     
-    if (window.confirm("Are you sure you want to log this outcome?")) {
-      setLoadingAction("outcome");
-      try {
-        await api.post(`/dashboard/leads/${id}/call-outcome`, { outcome });
-        await fetchLead();
-      } catch (err) {
-        alert(err.response?.data?.error || 'Failed to log outcome');
-      } finally {
-        setLoadingAction(null);
+    let notes = null;
+    if (outcome === "call_went_well") {
+      const promptResult = window.prompt("Optional: Any quick notes from the call? (Maya will use this to write a highly personalized follow-up message)");
+      if (promptResult === null) {
+        setOutcomeSelection("");
+        return;
+      }
+      notes = promptResult;
+    } else {
+      if (!window.confirm("Are you sure you want to log this outcome?")) {
+        setOutcomeSelection("");
+        return;
       }
     }
+    
+    setLoadingAction("outcome");
+    try {
+      await api.post(`/dashboard/leads/${id}/call-outcome`, { outcome, notes });
+      await fetchLead();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to log outcome');
+    } finally {
+      setLoadingAction(null);
+    }
+    
     setOutcomeSelection(""); // Reset dropdown
   };
 

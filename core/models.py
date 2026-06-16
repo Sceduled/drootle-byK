@@ -41,9 +41,10 @@ class Lead(Base):
     call_booked_at = Column(DateTime(timezone=True), nullable=True)
     call_reminder_sent = Column(Boolean, default=False)
 
-    # Voice
+    # Voice & Calls
     last_call_at = Column(DateTime(timezone=True), nullable=True)
     call_count = Column(Integer, default=0)
+    call_notes = Column(Text, nullable=True)
 
     # Lifecycle & Sequences
     opted_out = Column(Boolean, default=False, nullable=False, server_default=text("false"))

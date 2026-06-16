@@ -86,14 +86,24 @@ export default function Leads() {
     const outcome = e.target.value;
     if (!outcome) return;
     
-    if (!window.confirm("Are you sure you want to log this call outcome?")) {
-      e.target.value = "";
-      return;
+    let notes = null;
+    if (outcome === "call_went_well") {
+      const promptResult = window.prompt("Optional: Any quick notes from the call? (Maya will use this to write a highly personalized follow-up message)");
+      if (promptResult === null) {
+        e.target.value = "";
+        return;
+      }
+      notes = promptResult;
+    } else {
+      if (!window.confirm("Are you sure you want to log this call outcome?")) {
+        e.target.value = "";
+        return;
+      }
     }
     
     setOutcomeUpdating(leadId);
     try {
-      await api.post(`/dashboard/leads/${leadId}/call-outcome`, { outcome });
+      await api.post(`/dashboard/leads/${leadId}/call-outcome`, { outcome, notes });
       await fetchLeads();
       setExpandedRowId(null);
     } catch (err) {

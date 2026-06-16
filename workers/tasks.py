@@ -778,7 +778,28 @@ async def post_call_message_1(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("post_call_day1", name=lead.name or "there")
+        
+        # Build context for the AI
+        notes_context = f"Sales Call Notes: {lead.call_notes}\n" if lead.call_notes else ""
+        qual_context = f"Industry: {lead.industry}\nPain Point: {lead.pain_point}\nBudget: {lead.monthly_ad_budget}\n"
+        
+        prompt = f"""
+Write a short, friendly WhatsApp message (under 30 words) from Maya to {lead.name or 'there'}.
+Acknowledge that they just had a great phone call with Darshaan's team.
+Use the following context to make it highly personalized. Mention their specific business or pain point if possible.
+{notes_context}
+{qual_context}
+
+End the message by saying Darshaan's team is putting together the details for them.
+Do not use emojis except maybe one at the end. Do not sound like a robot.
+"""
+        from utils.openai_client import call_gpt_mini
+        msg = await call_gpt_mini(prompt)
+        
+        if not msg or "error" in msg.lower():
+            # Fallback if GPT fails or is down
+            msg = f"Great speaking today {lead.name or 'there'}! Loved discussing how we can help you solve {lead.pain_point or 'your challenges'} in the {lead.industry or 'your'} space. Darshaan's team is putting together the details for you now 🙌"
+            
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()

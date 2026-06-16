@@ -245,6 +245,7 @@ async def lead_action(lead_id: str, payload: ActionPayload, db: AsyncSession = D
 
 class CallOutcomePayload(BaseModel):
     outcome: str
+    notes: Optional[str] = None
 
 @router.post("/leads/{lead_id}/call-outcome")
 async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSession = Depends(get_db)):
@@ -258,6 +259,8 @@ async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSessi
     
     if outcome == "call_went_well":
         lead.conv_status = "post_call"
+        if payload.notes:
+            lead.call_notes = payload.notes
         await db.commit()
         await log_stage_change(lead_id, old_status, "post_call", "sales", "Call went well", db)
         await arq_pool.enqueue_job('start_post_call_sequence', lead_id)
