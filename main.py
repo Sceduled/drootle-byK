@@ -49,6 +49,14 @@ app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info("Running database migrations...")
+    try:
+        import subprocess
+        subprocess.run(["python", "-m", "alembic", "upgrade", "head"], check=True)
+        logger.info("Migrations applied successfully.")
+    except Exception as e:
+        logger.error(f"Failed to apply migrations: {e}")
+
     logger.info("Testing PostgreSQL connection...")
     db_ok = await test_db()
     logger.info(f"PostgreSQL connection: {'OK' if db_ok else 'FAILED'}")
