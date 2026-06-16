@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # Auth
     JWT_SECRET: str
-    JWT_EXPIRY_HOURS: int = 24
+    JWT_EXPIRY_HOURS: int = 12
 
     # Webhook security
     WEBHOOK_SECRET: str = ""

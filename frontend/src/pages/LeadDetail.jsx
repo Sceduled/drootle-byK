@@ -162,14 +162,20 @@ export default function LeadDetail() {
                     try {
                       await api.post(`/dashboard/leads/${id}/force-stage`, {
                         status: overrideStatus,
-                        reason: overrideReason
+                        reason: overrideReason,
+                        last_updated_at: lead?.updated_at || null
                       });
                       setShowOverrideModal(false);
                       setOverrideStatus("");
                       setOverrideReason("");
                       await fetchLead();
                     } catch (err) {
-                      alert(err.response?.data?.error || "Failed");
+                      if (err.response?.status === 409) {
+                        alert("⚠️ " + err.response.data.detail);
+                        await fetchLead(); // Auto-refresh to show latest data
+                      } else {
+                        alert(err.response?.data?.error || "Failed");
+                      }
                     }
                     setLoadingAction(null);
                   }}

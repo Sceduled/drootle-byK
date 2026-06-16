@@ -133,6 +133,7 @@ async def get_lead_history(lead_id: str, db: AsyncSession = Depends(get_db)):
 class ForceStagePayload(BaseModel):
     status: str
     reason: str
+    last_updated_at: str | None = None  # ISO timestamp for optimistic concurrency check
 
 VALID_STATUSES = ["new", "qualifying", "stalled", "awaiting_call", "post_call", "fomo", "cold", "closed", "upsell", "archived", "lost"]
 
@@ -148,6 +149,18 @@ async def force_stage(lead_id: str, payload: ForceStagePayload, db: AsyncSession
     old_status = lead.conv_status
     if old_status == payload.status:
         return {"success": True, "note": "Status already set"}
+
+    # Optimistic Concurrency Control: reject if another rep already updated this lead
+    if payload.last_updated_at:
+        from datetime import timezone
+        db_updated = lead.updated_at.replace(tzinfo=timezone.utc) if lead.updated_at.tzinfo is None else lead.updated_at
+        client_updated = datetime.fromisoformat(payload.last_updated_at.replace("Z", "+00:00"))
+        if db_updated > client_updated:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=409,
+                detail="Another user just modified this lead. Please refresh to see the latest data."
+            )
         
     lead.conv_status = payload.status
     await db.commit()

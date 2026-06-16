@@ -99,7 +99,12 @@ if os.path.exists("frontend/dist"):
     
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        return FileResponse("frontend/dist/index.html")
+        from fastapi.responses import FileResponse
+        response = FileResponse("frontend/dist/index.html")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 if __name__ == "__main__":
     import uvicorn
