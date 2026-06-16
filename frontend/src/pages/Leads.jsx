@@ -234,17 +234,24 @@ export default function Leads() {
                 {activeLeads.map((lead) => {
                   
                   // Construct Summary Logic
-                  let summaryText = "";
-                  if (lead.call_notes) {
-                    summaryText = lead.call_notes;
-                  } else if (lead.pain_point || lead.urgency || lead.budget) {
+                  let aiSummary = "";
+                  if (lead.pain_point || lead.urgency || lead.budget) {
                     const parts = [];
                     if (lead.pain_point) parts.push(`Struggling with ${lead.pain_point.toLowerCase()}.`);
                     if (lead.budget) parts.push(`Budget is around ${lead.budget}.`);
                     if (lead.urgency) parts.push(`Timeline: ${lead.urgency}.`);
-                    summaryText = parts.join(" ");
+                    aiSummary = parts.join(" ");
+                  }
+                  
+                  let summaryText = "";
+                  if (lead.call_notes && aiSummary) {
+                     summaryText = `[ AI Chat Summary ]\n${aiSummary}\n\n[ Sales Call Notes ]\n${lead.call_notes}`;
+                  } else if (lead.call_notes) {
+                     summaryText = `[ Sales Call Notes ]\n${lead.call_notes}`;
+                  } else if (aiSummary) {
+                     summaryText = `[ AI Chat Summary ]\n${aiSummary}`;
                   } else {
-                    summaryText = "Lead has not provided enough information yet. No summary available.";
+                     summaryText = "Lead has not provided enough information yet. No summary available.";
                   }
 
                   return (
@@ -290,7 +297,7 @@ export default function Leads() {
                                   <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-xl p-5">
                                     <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                                       <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
-                                      {lead.call_notes ? "Call Notes" : "AI Summary"}
+                                      Lead Summary
                                     </h4>
                                     <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
                                       {summaryText}
