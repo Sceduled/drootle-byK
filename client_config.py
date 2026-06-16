@@ -134,24 +134,24 @@ SEQUENCE_MESSAGES = {
     ),
 
     # Sequence 7 — Lead Recovery / Reactivation
-    "reactivation_week2": (
+    "reactivation_wk2": (
         "3 things most agencies get wrong with Meta ads "
         "in your niche — thought this might be useful 👇"
     ),
-    "reactivation_week4": (
+    "reactivation_wk4": (
         "What we're seeing in your space this month — "
         "thought you'd find this interesting."
     ),
-    "reactivation_week6": (
+    "reactivation_wk6": (
         "Things change fast — still exploring growth options "
         "or have you sorted it out? 😊"
     ),
-    "reactivation_week8": (
+    "reactivation_wk8": (
         "We recently started working with a client who had "
         "the exact same challenge you mentioned. "
         "Mind if I share what worked for them?"
     ),
-    "reactivation_week12": (
+    "reactivation_wk12": (
         "Closing this conversation after today — "
         "anything changed on your end? 🙏"
     ),
@@ -162,15 +162,15 @@ SEQUENCE_MESSAGES = {
         "Here's what happens next and what to expect "
         "in the first 30 days 🙌"
     ),
-    "closed_day14": (
+    "closed_wk2": (
         "How are things going so far {name}? "
         "Anything you need from us?"
     ),
-    "closed_day30": (
+    "closed_mo1": (
         "Quick favour {name} — know anyone who'd benefit "
         "from this? Happy to take care of them like we did you 🙏"
     ),
-    "closed_day35": (
+    "closed_mo1_fup": (
         "Would you mind sharing a quick review? "
         "Even 2 sentences helps us massively 🙏"
     ),
