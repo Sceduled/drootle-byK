@@ -4,6 +4,7 @@ import { Download, Inbox, ChevronDown, ChevronRight, Search, ArrowRight } from '
 import api from '../lib/api';
 import moment from 'moment';
 import { motion, AnimatePresence } from 'framer-motion';
+import Modal from '../components/Modal';
 
 const CALL_OUTCOMES = [
   { value: "call_went_well",   label: "✅ Call went well" },
@@ -48,6 +49,8 @@ export default function Leads() {
   const [expandedStages, setExpandedStages] = useState({ new: true, qualified: true });
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [outcomeUpdating, setOutcomeUpdating] = useState(null);
+  const [modalConfig, setModalConfig] = useState({ isOpen: false });
+  const [modalInput, setModalInput] = useState('');
   const navigate = useNavigate();
 
   const fetchLeads = async () => {
@@ -86,29 +89,43 @@ export default function Leads() {
     const outcome = e.target.value;
     if (!outcome) return;
     
-    let notes = null;
     if (outcome === "call_went_well") {
-      const promptResult = window.prompt("Optional: Any quick notes from the call? (Maya will use this to write a highly personalized follow-up message)");
-      if (promptResult === null) {
-        e.target.value = "";
-        return;
-      }
-      notes = promptResult;
+      setModalConfig({
+        isOpen: true,
+        type: 'prompt',
+        title: 'Call Notes',
+        description: 'Optional: Any quick notes from the call? (Maya will use this to write a highly personalized follow-up message)',
+        leadId,
+        outcome
+      });
+      setModalInput('');
     } else {
-      if (!window.confirm("Are you sure you want to log this call outcome?")) {
-        e.target.value = "";
-        return;
-      }
+      setModalConfig({
+        isOpen: true,
+        type: 'confirm',
+        title: 'Confirm Outcome',
+        description: 'Are you sure you want to log this call outcome?',
+        leadId,
+        outcome
+      });
     }
-    
+  };
+
+  const executeOutcomeUpdate = async (notes = null) => {
+    const { leadId, outcome } = modalConfig;
+    setModalConfig({ isOpen: false });
     setOutcomeUpdating(leadId);
     try {
       await api.post(`/dashboard/leads/${leadId}/call-outcome`, { outcome, notes });
       await fetchLeads();
       setExpandedRowId(null);
     } catch (err) {
-      alert(err.response?.data?.error || "Failed");
-      e.target.value = "";
+      setModalConfig({
+        isOpen: true,
+        type: 'alert',
+        title: 'Error',
+        description: err.response?.data?.error || "Failed to update outcome."
+      });
     } finally {
       setOutcomeUpdating(null);
     }
@@ -352,6 +369,24 @@ export default function Leads() {
           })
         )}
       </div>
+
+      <Modal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ isOpen: false })}
+        title={modalConfig.title}
+        description={modalConfig.description}
+        type={modalConfig.type}
+        inputValue={modalInput}
+        setInputValue={setModalInput}
+        onConfirm={() => {
+          if (modalConfig.type === 'alert') {
+            setModalConfig({ isOpen: false });
+          } else {
+            executeOutcomeUpdate(modalConfig.type === 'prompt' ? modalInput : null);
+          }
+        }}
+        confirmText={modalConfig.type === 'alert' ? 'OK' : 'Submit'}
+      />
     </motion.div>
   );
 }
