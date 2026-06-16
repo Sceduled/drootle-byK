@@ -793,7 +793,7 @@ Use the following context to make it highly personalized. Mention their specific
 End the message by saying Darshaan's team is putting together the details for them.
 Do not use emojis except maybe one at the end. Do not sound like a robot.
 """
-        from utils.openai_client import call_gpt_mini
+        from services.gpt import call_gpt_mini
         msg = await call_gpt_mini(prompt)
         
         if not msg or "error" in msg.lower():
