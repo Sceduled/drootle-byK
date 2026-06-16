@@ -241,6 +241,27 @@ async def process_buffered_message(ctx, phone: str):
         logger.info(f"[{lead.id}] Exchange summary: Received {len(messages)} messages. Replied and updated lead.")
 
 @safe_task
+async def ask_for_reschedule(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Executing ask_for_reschedule")
+    async with AsyncSessionLocal() as db:
+        # Since it's a sequence 2 (qualification) fallback, we check if seq 2 is active
+        can_send, reason = await can_send_message(lead_id, "qualifying", 2, db)
+        if not can_send: return
+        
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead: return
+        
+        msg = get_sequence_message("reschedule_ask", name=lead.name or "there")
+        if not msg:
+            logger.error(f"[{lead_id}] reschedule_ask message not found in config")
+            return
+            
+        await send_message(lead.phone, msg)
+        db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+        await db.commit()
+
+@safe_task
 async def check_stalled_leads(ctx):
     logger.info("Running check_stalled_leads cron job")
     arq_pool = ctx.get('redis')
@@ -894,6 +915,7 @@ class WorkerSettings:
     functions = [
         send_opening_message,
         process_buffered_message,
+        ask_for_reschedule,
         post_qualification_actions,
         schedule_call_reminder,
         send_call_reminder,

@@ -264,11 +264,13 @@ async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSessi
         return {"success": True, "next_stage": "post_call"}
         
     elif outcome == "reschedule":
-        lead.conv_status = "awaiting_call"
+        lead.conv_status = "qualifying"
         lead.call_reminder_sent = False
+        lead.preferred_call_time = None
         await db.commit()
-        await log_stage_change(lead_id, old_status, "awaiting_call", "sales", "Need to reschedule", db)
-        return {"success": True, "next_stage": "awaiting_call"}
+        await log_stage_change(lead_id, old_status, "qualifying", "sales", "Need to reschedule", db)
+        await arq_pool.enqueue_job('ask_for_reschedule', lead_id)
+        return {"success": True, "next_stage": "qualifying"}
         
     elif outcome == "no_show":
         lead.conv_status = "stalled"

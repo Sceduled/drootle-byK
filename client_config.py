@@ -57,6 +57,9 @@ SEQUENCE_MESSAGES = {
     "qual_nudge_24h": (
         "Hey {name}! Just checking in — still around? 😊"
     ),
+    "reschedule_ask": (
+        "Hey {name}, Darshaan mentioned we need to reschedule our call. What time works best for you?"
+    ),
 
     # Sequence 3 — DNP Recovery
     "dnp_day1": (
