@@ -46,7 +46,7 @@ export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [expandedStages, setExpandedStages] = useState({ new: true, qualified: true });
+  const [activeStageId, setActiveStageId] = useState('new');
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [outcomeUpdating, setOutcomeUpdating] = useState(null);
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
@@ -73,10 +73,6 @@ export default function Leads() {
 
   const handleExport = () => {
     window.open(`${import.meta.env.VITE_API_URL || '/api'}/dashboard/leads/export`, '_blank');
-  };
-
-  const toggleStage = (stageId) => {
-    setExpandedStages(prev => ({ ...prev, [stageId]: !prev[stageId] }));
   };
 
   const toggleRow = (e, id) => {
@@ -137,9 +133,13 @@ export default function Leads() {
     lead.phone?.includes(searchQuery)
   );
 
-  const getLeadsForStage = (stage) => {
+  const getLeadsForStage = (stageId) => {
+    const stage = PIPELINE_STAGES.find(s => s.id === stageId);
+    if (!stage) return [];
     return filteredLeads.filter(lead => stage.statuses.includes(lead.conv_status));
   };
+
+  const activeLeads = getLeadsForStage(activeStageId);
 
   return (
     <motion.div 
@@ -178,195 +178,157 @@ export default function Leads() {
         </div>
       </div>
 
-      {/* Top Pipeline Bar */}
-      <div className="mb-8 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="flex items-center gap-2 min-w-max">
-          {PIPELINE_STAGES.map((stage, idx) => {
-            const count = getLeadsForStage(stage).length;
+      {/* Top Pipeline Bar as Tabs */}
+      <div className="mb-8 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-3 min-w-max">
+          {PIPELINE_STAGES.map((stage) => {
+            const count = filteredLeads.filter(l => stage.statuses.includes(l.conv_status)).length;
+            const isActive = activeStageId === stage.id;
+            
             return (
-              <div key={stage.id} className="flex items-center">
-                <div 
-                  onClick={() => toggleStage(stage.id)}
-                  className={`flex flex-col justify-center px-6 py-3 rounded-xl border bg-gradient-to-br cursor-pointer hover:scale-[1.02] transition-transform ${stage.color} ${stage.border} min-w-[160px] relative overflow-hidden group`}
-                >
-                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className={`text-2xl font-bold mb-1 ${stage.text}`}>{count}</span>
-                  <span className={`text-xs font-semibold uppercase tracking-widest ${stage.text} opacity-80`}>{stage.label}</span>
-                </div>
-                {idx < PIPELINE_STAGES.length - 1 && (
-                  <div className="w-8 flex justify-center text-gray-700">
-                    <ChevronRight size={20} />
-                  </div>
-                )}
+              <div 
+                key={stage.id} 
+                onClick={() => {
+                  setActiveStageId(stage.id);
+                  setExpandedRowId(null);
+                }}
+                className={`flex flex-col justify-center px-6 py-4 rounded-xl border transition-all cursor-pointer min-w-[180px]
+                  ${isActive 
+                    ? `bg-gradient-to-br ${stage.color} ${stage.border} scale-105 shadow-lg` 
+                    : 'bg-[#09090b]/50 border-white/[0.05] hover:bg-white/[0.02] opacity-60 hover:opacity-100'
+                  }
+                `}
+              >
+                <span className={`text-3xl font-bold mb-1 ${isActive ? stage.text : 'text-gray-300'}`}>{count}</span>
+                <span className={`text-xs font-semibold uppercase tracking-widest ${isActive ? stage.text : 'text-gray-500'}`}>{stage.label}</span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Pipeline Accordions */}
-      <div className="space-y-4">
+      {/* Single Table for Active Stage */}
+      <div className="glass-card overflow-hidden">
         {loading ? (
-          <div className="glass-card p-12 flex justify-center">
+          <div className="p-12 flex justify-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]"></div>
           </div>
-        ) : filteredLeads.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <p className="text-gray-400 font-medium text-lg mb-2">No leads found in pipeline</p>
-            <p className="text-gray-600 text-sm">Try adjusting your search criteria or wait for new leads to arrive.</p>
+        ) : activeLeads.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-gray-400 font-medium text-lg mb-2">No leads found</p>
+            <p className="text-gray-600 text-sm">There are no leads currently in the "{PIPELINE_STAGES.find(s => s.id === activeStageId)?.label}" stage.</p>
           </div>
         ) : (
-          PIPELINE_STAGES.map((stage) => {
-            const stageLeads = getLeadsForStage(stage);
-            const isExpanded = expandedStages[stage.id];
-            
-            if (stageLeads.length === 0) return null;
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-[#09090b]/50 text-gray-500 font-medium border-b border-white/[0.05] uppercase tracking-widest text-[10px]">
+                <tr>
+                  <th className="px-6 py-4">Score</th>
+                  <th className="px-6 py-4">Name</th>
+                  <th className="px-6 py-4">Company</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.02]">
+                {activeLeads.map((lead) => {
+                  
+                  // Construct Summary Logic
+                  let summaryText = "";
+                  if (lead.call_notes) {
+                    summaryText = lead.call_notes;
+                  } else if (lead.pain_point || lead.urgency || lead.budget) {
+                    const parts = [];
+                    if (lead.pain_point) parts.push(`Struggling with ${lead.pain_point.toLowerCase()}.`);
+                    if (lead.budget) parts.push(`Budget is around ${lead.budget}.`);
+                    if (lead.urgency) parts.push(`Timeline: ${lead.urgency}.`);
+                    summaryText = parts.join(" ");
+                  } else {
+                    summaryText = "Lead has not provided enough information yet. No summary available.";
+                  }
 
-            return (
-              <div key={stage.id} className="glass-card overflow-hidden transition-all duration-300">
-                {/* Accordion Header */}
-                <button 
-                  onClick={() => toggleStage(stage.id)}
-                  className={`w-full flex items-center justify-between p-4 bg-gradient-to-r hover:bg-white/[0.02] transition-colors text-left border-l-4 ${
-                    stage.id === 'new' ? 'border-l-blue-500 from-blue-500/5' :
-                    stage.id === 'qualified' ? 'border-l-purple-500 from-purple-500/5' :
-                    stage.id === 'nurturing' ? 'border-l-amber-500 from-amber-500/5' :
-                    stage.id === 'won' ? 'border-l-emerald-500 from-emerald-500/5' :
-                    'border-l-gray-500 from-gray-500/5'
-                  } to-transparent`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-gray-500 transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
-                      <ChevronDown size={20} />
-                    </div>
-                    <span className={`font-semibold tracking-wide ${stage.text}`}>{stage.label}</span>
-                    <span className="bg-white/10 px-2.5 py-0.5 rounded-full text-xs font-bold text-white">{stageLeads.length}</span>
-                  </div>
-                </button>
-
-                {/* Accordion Content (Table) */}
-                <AnimatePresence initial={false}>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="border-t border-white/[0.05]"
-                    >
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm whitespace-nowrap">
-                          <thead className="bg-[#09090b]/50 text-gray-500 font-medium border-b border-white/[0.05] uppercase tracking-widest text-[10px]">
-                            <tr>
-                              <th className="px-6 py-3">Score</th>
-                              <th className="px-6 py-3">Name</th>
-                              <th className="px-6 py-3">Company</th>
-                              <th className="px-6 py-3">Industry</th>
-                              <th className="px-6 py-3">Budget</th>
-                              <th className="px-6 py-3">Call Time</th>
-                              <th className="px-6 py-3">Status</th>
-                              <th className="px-6 py-3 text-right">Time Ago</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/[0.02]">
-                            {stageLeads.map((lead) => (
-                              <React.Fragment key={lead.id}>
-                                <tr 
-                                  onClick={(e) => toggleRow(e, lead.id)}
-                                  className={`hover:bg-white/[0.04] cursor-pointer transition-colors group bg-[#09090b]/20 ${expandedRowId === lead.id ? 'bg-white/[0.03]' : ''}`}
-                                >
-                                  <td className="px-6 py-3.5">
-                                    {lead.lead_score ? (
-                                      <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${lead.lead_score === 'HOT' ? 'bg-red-400' : lead.lead_score === 'WARM' ? 'bg-amber-400' : 'bg-blue-400'}`} />
-                                        <span className="font-semibold text-gray-300 text-xs">{lead.lead_score}</span>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-gray-700" />
-                                        <span className="text-gray-600 font-medium text-xs">UNRATED</span>
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-3.5 font-semibold text-gray-200 group-hover:text-white transition-colors">{lead.name || '—'}</td>
-                                  <td className="px-6 py-3.5 text-gray-400">{lead.company_name || '—'}</td>
-                                  <td className="px-6 py-3.5 text-gray-400 capitalize">{lead.industry?.replace('_', ' ') || '—'}</td>
-                                  <td className="px-6 py-3.5 text-gray-400">{lead.monthly_ad_budget?.replace('_', ' ') || '—'}</td>
-                                  <td className="px-6 py-3.5 text-gray-400">{lead.preferred_call_time || '—'}</td>
-                                  <td className="px-6 py-3.5">
-                                    <span className={`px-2 py-1 rounded text-[10px] font-semibold tracking-widest uppercase ${STATUS_COLORS[lead.conv_status] || 'bg-white/[0.02] text-gray-500'}`}>
-                                      {lead.conv_status?.replace('_', ' ')}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-3.5 text-gray-500 text-right text-xs">{moment(lead.created_at).fromNow()}</td>
-                                </tr>
-                                
-                                <AnimatePresence>
-                                  {expandedRowId === lead.id && (
-                                    <tr className="bg-white/[0.01]">
-                                      <td colSpan="8" className="px-6 py-4 border-b border-white/[0.05]">
-                                        <motion.div
-                                          initial={{ height: 0, opacity: 0 }}
-                                          animate={{ height: "auto", opacity: 1 }}
-                                          exit={{ height: 0, opacity: 0 }}
-                                          transition={{ duration: 0.2 }}
-                                          className="flex flex-col md:flex-row gap-6 items-start overflow-hidden"
-                                        >
-                                           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm mt-2">
-                                              <div>
-                                                <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold block mb-1">Pain Point</span>
-                                                <span className="text-gray-300 whitespace-normal">{lead.pain_point || '—'}</span>
-                                              </div>
-                                              <div>
-                                                <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold block mb-1">Urgency</span>
-                                                <span className="text-gray-300 whitespace-normal">{lead.urgency || '—'}</span>
-                                              </div>
-                                              <div>
-                                                <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold block mb-1">Target Markets</span>
-                                                <span className="text-gray-300 whitespace-normal">{lead.target_markets?.join(', ') || '—'}</span>
-                                              </div>
-                                              <div>
-                                                <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold block mb-1">Phone Number</span>
-                                                <span className="text-gray-300">{lead.phone || '—'}</span>
-                                              </div>
-                                           </div>
-                                           <div className="w-full md:w-72 shrink-0 bg-[#09090b]/50 p-4 rounded-xl border border-white/[0.05]">
-                                              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Log Call Outcome</label>
-                                              <select 
-                                                className="w-full bg-white/[0.03] border border-white/[0.1] text-gray-200 text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-2.5 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white mb-3 hover:bg-white/[0.05] transition-colors outline-none"
-                                                onChange={(e) => handleOutcomeSelect(e, lead.id)}
-                                                value=""
-                                                disabled={outcomeUpdating === lead.id}
-                                                onClick={e => e.stopPropagation()}
-                                              >
-                                                <option value="" disabled>Select outcome...</option>
-                                                {CALL_OUTCOMES.map(o => (
-                                                  <option key={o.value} value={o.value}>{o.label}</option>
-                                                ))}
-                                              </select>
-                                              <button 
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/leads/${lead.id}`); }}
-                                                className="w-full text-center text-cyan-500 text-xs font-semibold uppercase tracking-widest hover:text-cyan-400 transition-colors py-2 flex items-center justify-center gap-2 hover:bg-white/[0.02] rounded-lg"
-                                              >
-                                                View Full Profile <ArrowRight size={14} />
-                                              </button>
-                                           </div>
-                                        </motion.div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                </AnimatePresence>
-                              </React.Fragment>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })
+                  return (
+                    <React.Fragment key={lead.id}>
+                      <tr 
+                        onClick={(e) => toggleRow(e, lead.id)}
+                        className={`hover:bg-white/[0.04] cursor-pointer transition-colors group bg-[#09090b]/20 ${expandedRowId === lead.id ? 'bg-white/[0.03]' : ''}`}
+                      >
+                        <td className="px-6 py-4">
+                          {lead.lead_score ? (
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${lead.lead_score === 'HOT' ? 'bg-red-400' : lead.lead_score === 'WARM' ? 'bg-amber-400' : 'bg-blue-400'}`} />
+                              <span className="font-semibold text-gray-300 text-xs">{lead.lead_score}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-gray-700" />
+                              <span className="text-gray-600 font-medium text-xs">UNRATED</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-gray-200 group-hover:text-white transition-colors">{lead.name || '—'}</td>
+                        <td className="px-6 py-4 text-gray-400">{lead.company_name || '—'}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1.5 rounded text-[10px] font-semibold tracking-widest uppercase ${STATUS_COLORS[lead.conv_status] || 'bg-white/[0.02] text-gray-500'}`}>
+                            {lead.conv_status?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 text-right text-xs font-medium">{moment(lead.created_at).format('MMM D, YYYY')}</td>
+                      </tr>
+                      
+                      <AnimatePresence>
+                        {expandedRowId === lead.id && (
+                          <tr className="bg-white/[0.01]">
+                            <td colSpan="5" className="px-6 py-6 border-b border-white/[0.05]">
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex flex-col md:flex-row gap-8 items-start overflow-hidden"
+                              >
+                                  <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-xl p-5">
+                                    <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+                                      {lead.call_notes ? "Call Notes" : "AI Summary"}
+                                    </h4>
+                                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                      {summaryText}
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="w-full md:w-72 shrink-0 bg-[#09090b]/50 p-5 rounded-xl border border-white/[0.05]">
+                                    <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Log Call Outcome</label>
+                                    <select 
+                                      className="w-full bg-white/[0.03] border border-white/[0.1] text-gray-200 text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-3 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white mb-4 hover:bg-white/[0.05] transition-colors outline-none cursor-pointer"
+                                      onChange={(e) => handleOutcomeSelect(e, lead.id)}
+                                      value=""
+                                      disabled={outcomeUpdating === lead.id}
+                                      onClick={e => e.stopPropagation()}
+                                    >
+                                      <option value="" disabled>Select outcome...</option>
+                                      {CALL_OUTCOMES.map(o => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                      ))}
+                                    </select>
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/leads/${lead.id}`); }}
+                                      className="w-full text-center bg-cyan-500/10 text-cyan-400 text-xs font-semibold uppercase tracking-widest hover:bg-cyan-500/20 hover:text-cyan-300 transition-colors py-3 flex items-center justify-center gap-2 rounded-lg border border-cyan-500/20"
+                                    >
+                                      View Full Profile <ArrowRight size={14} />
+                                    </button>
+                                  </div>
+                              </motion.div>
+                            </td>
+                          </tr>
+                        )}
+                      </AnimatePresence>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
