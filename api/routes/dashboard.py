@@ -138,13 +138,18 @@ class ForceStagePayload(BaseModel):
 VALID_STATUSES = ["new", "qualifying", "stalled", "awaiting_call", "post_call", "fomo", "cold", "closed", "upsell", "archived", "lost"]
 
 @router.post("/leads/{lead_id}/force-stage")
-async def force_stage(lead_id: str, payload: ForceStagePayload, db: AsyncSession = Depends(get_db)):
+async def force_stage(lead_id: str, payload: ForceStagePayload, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     if payload.status not in VALID_STATUSES:
         return {"error": f"Invalid status. Must be one of {VALID_STATUSES}"}
         
     result = await db.execute(select(Lead).where(Lead.id == lead_id))
     lead = result.scalars().first()
     if not lead: return {"error": "not found"}
+    
+    # Ownership Check
+    if current_user["role"] != "admin" and lead.assigned_to and lead.assigned_to != current_user["username"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Lead is assigned to another representative.")
     
     old_status = lead.conv_status
     if old_status == payload.status:
@@ -262,10 +267,15 @@ class CallOutcomePayload(BaseModel):
     last_updated_at: str | None = None
 
 @router.post("/leads/{lead_id}/call-outcome")
-async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSession = Depends(get_db)):
+async def call_outcome(lead_id: str, payload: CallOutcomePayload, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     result = await db.execute(select(Lead).where(Lead.id == lead_id))
     lead = result.scalars().first()
     if not lead: return {"error": "not found"}
+    
+    # Ownership Check
+    if current_user["role"] != "admin" and lead.assigned_to and lead.assigned_to != current_user["username"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Lead is assigned to another representative.")
     
     old_status = lead.conv_status
     
@@ -411,3 +421,56 @@ async def get_profile():
         "client_brand": CLIENT_BRAND,
         "owner_name": OWNER_NAME
     }
+
+@router.post("/leads/{lead_id}/claim")
+async def claim_lead(lead_id: str, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalars().first()
+    if not lead: return {"error": "not found"}
+    
+    if lead.assigned_to and lead.assigned_to != current_user["username"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=409, detail=f"Lead is already claimed by {lead.assigned_to}")
+        
+    lead.assigned_to = current_user["username"]
+    await db.commit()
+    return {"success": True, "assigned_to": current_user["username"]}
+
+class CreateUserPayload(BaseModel):
+    username: str
+    password: str
+
+@router.get("/users")
+async def get_users(db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    from core.models import User
+    result = await db.execute(select(User))
+    users = result.scalars().all()
+    return [{"id": str(u.id), "username": u.username, "role": u.role, "created_at": u.created_at} for u in users]
+
+@router.post("/users")
+async def create_user(payload: CreateUserPayload, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Admin access required")
+        
+    from core.models import User
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    result = await db.execute(select(User).where(User.username == payload.username))
+    if result.scalars().first():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Username already exists")
+        
+    new_user = User(
+        username=payload.username,
+        password_hash=pwd_context.hash(payload.password),
+        role="sales_rep"
+    )
+    db.add(new_user)
+    await db.commit()
+    return {"success": True, "username": new_user.username}

@@ -18,6 +18,8 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', { username, password });
       localStorage.setItem('drootle_token', res.data.access_token);
+      localStorage.setItem('drootle_role', res.data.role);
+      localStorage.setItem('drootle_username', username);
       navigate('/leads');
     } catch (err) {
       setError('Invalid credentials');

@@ -6,11 +6,14 @@ import logoUrl from '../assets/logo.jpeg';
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const logout = () => {
+  const handleLogout = () => {
     localStorage.removeItem('drootle_token');
-    window.location.href = '/login';
+    localStorage.removeItem('drootle_role');
+    localStorage.removeItem('drootle_username');
+    navigate('/login');
   };
 
   const navItems = [

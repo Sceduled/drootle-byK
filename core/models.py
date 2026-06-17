@@ -11,6 +11,15 @@ from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(Text, nullable=False, unique=True, index=True)
+    password_hash = Column(Text, nullable=False)
+    role = Column(Text, default="sales_rep", nullable=False) # 'admin' or 'sales_rep'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class Lead(Base):
     __tablename__ = "leads"
 

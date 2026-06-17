@@ -30,6 +30,9 @@ export default function LeadDetail() {
   const [outcomeSelection, setOutcomeSelection] = useState("");
   const messagesEndRef = useRef(null);
 
+  const currentUserRole = localStorage.getItem('drootle_role');
+  const currentUserUsername = localStorage.getItem('drootle_username');
+
   const fetchLead = async () => {
     try {
       const res = await api.get(`/dashboard/leads/${id}`);
@@ -91,15 +94,33 @@ export default function LeadDetail() {
     
     setLoadingAction("outcome");
     try {
-      await api.post(`/dashboard/leads/${id}/call-outcome`, { outcome, notes });
+      await api.post(`/dashboard/leads/${id}/call-outcome`, { 
+        outcome, 
+        notes,
+        last_updated_at: data?.lead?.updated_at || null
+      });
       await fetchLead();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to log outcome');
+      if (err.response?.status === 409) {
+        alert(err.response.data.detail);
+        await fetchLead(); // Auto-refresh to show latest data
+      } else {
+        alert(err.response?.data?.error || 'Failed to log outcome');
+      }
     } finally {
       setLoadingAction(null);
     }
     
     setOutcomeSelection(""); // Reset dropdown
+  };
+
+  const handleClaim = async () => {
+    try {
+      await api.post(`/dashboard/leads/${id}/claim`);
+      await fetchLead();
+    } catch (err) {
+      alert(err.response?.data?.detail || err.response?.data?.error || "Failed to claim lead.");
+    }
   };
 
   if (!data) return <div className="p-8 text-center text-gray-500">Loading...</div>;
@@ -213,11 +234,30 @@ export default function LeadDetail() {
             )}
           </div>
           
-          <span className="inline-block bg-white/[0.03] text-gray-300 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold mb-6 border border-white/[0.05]">
-            STATUS: {lead.conv_status}
-          </span>
+          <div className="flex gap-2 mb-6">
+            <span className="inline-block bg-white/[0.03] text-gray-300 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-white/[0.05]">
+              STATUS: {lead.conv_status}
+            </span>
+            {lead.assigned_to ? (
+              <span className="inline-block bg-white/[0.03] text-gray-300 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-white/[0.05]">
+                {lead.assigned_to}
+              </span>
+            ) : (
+              <span className="inline-block bg-white/[0.02] text-gray-500 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-white/[0.05] italic">
+                Unassigned
+              </span>
+            )}
+          </div>
 
           <div className="space-y-3 mt-4 flex flex-col">
+            {!lead.assigned_to && (
+              <button 
+                onClick={handleClaim}
+                className="w-full bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold uppercase tracking-widest py-3 px-4 rounded-lg transition-colors shadow-[0_0_15px_rgba(6,182,212,0.3)] mb-4"
+              >
+                Claim Lead
+              </button>
+            )}
             {lead.conv_status === 'awaiting_call' && (
               <div className="mb-2">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Log Call Outcome</label>
@@ -225,7 +265,7 @@ export default function LeadDetail() {
                   className="w-full bg-white/[0.02] border border-white/[0.05] text-white text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-2.5 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white"
                   onChange={handleOutcomeSelect}
                   value={outcomeSelection}
-                  disabled={loadingAction === "outcome"}
+                  disabled={loadingAction === "outcome" || (currentUserRole !== 'admin' && lead.assigned_to !== currentUserUsername)}
                 >
                   <option value="" disabled>Select outcome...</option>
                   {CALL_OUTCOMES.map(o => (
@@ -268,7 +308,8 @@ export default function LeadDetail() {
               </button>
               <button 
                 onClick={() => setShowOverrideModal(true)}
-                className="w-full bg-white/[0.03] hover:bg-white/[0.05] text-gray-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm border border-white/[0.05]"
+                disabled={currentUserRole !== 'admin' && lead.assigned_to !== currentUserUsername}
+                className="w-full bg-white/[0.03] hover:bg-white/[0.05] text-gray-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm border border-white/[0.05] disabled:opacity-50"
               >
                 Override Stage
               </button>

@@ -49,6 +49,10 @@ export default function Leads() {
   const [activeStageId, setActiveStageId] = useState('new');
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [outcomeUpdating, setOutcomeUpdating] = useState(null);
+  
+  const currentUserRole = localStorage.getItem('drootle_role');
+  const currentUserUsername = localStorage.getItem('drootle_username');
+
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
   const [modalInput, setModalInput] = useState('');
   const navigate = useNavigate();
@@ -141,6 +145,21 @@ export default function Leads() {
       }
     } finally {
       setOutcomeUpdating(null);
+    }
+  };
+
+  const handleClaim = async (e, leadId) => {
+    e.stopPropagation();
+    try {
+      await api.post(`/dashboard/leads/${leadId}/claim`);
+      await fetchLeads();
+    } catch (err) {
+      setModalConfig({
+        isOpen: true,
+        type: 'alert',
+        title: 'Error',
+        description: err.response?.data?.detail || err.response?.data?.error || "Failed to claim lead."
+      });
     }
   };
 
@@ -244,6 +263,7 @@ export default function Leads() {
                   <th className="px-6 py-4">Name</th>
                   <th className="px-6 py-4">Company</th>
                   <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Assigned To</th>
                   <th className="px-6 py-4 text-right">Date</th>
                 </tr>
               </thead>
@@ -299,6 +319,13 @@ export default function Leads() {
                             {lead.conv_status?.replace('_', ' ')}
                           </span>
                         </td>
+                        <td className="px-6 py-4">
+                          {lead.assigned_to ? (
+                            <span className="text-gray-300 text-xs font-medium px-2 py-1 bg-white/[0.05] rounded border border-white/[0.05]">{lead.assigned_to}</span>
+                          ) : (
+                            <span className="text-gray-500 text-xs italic">Unassigned</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 text-gray-500 text-right text-xs font-medium">{moment(lead.created_at).format('MMM D, YYYY')}</td>
                       </tr>
                       
@@ -324,19 +351,32 @@ export default function Leads() {
                                   </div>
                                   
                                   <div className="w-full md:w-72 shrink-0 bg-[#09090b]/50 p-5 rounded-xl border border-white/[0.05]">
-                                    <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Log Call Outcome</label>
-                                    <select 
-                                      className="w-full bg-white/[0.03] border border-white/[0.1] text-gray-200 text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-3 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white mb-4 hover:bg-white/[0.05] transition-colors outline-none cursor-pointer"
-                                      onChange={(e) => handleOutcomeSelect(e, lead.id)}
-                                      value=""
-                                      disabled={outcomeUpdating === lead.id}
-                                      onClick={e => e.stopPropagation()}
-                                    >
-                                      <option value="" disabled>Select outcome...</option>
-                                      {CALL_OUTCOMES.map(o => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                      ))}
-                                    </select>
+                                    {!lead.assigned_to ? (
+                                      <div className="mb-4">
+                                        <button 
+                                          onClick={(e) => handleClaim(e, lead.id)}
+                                          className="w-full bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold uppercase tracking-widest py-3 px-4 rounded-lg transition-colors shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                                        >
+                                          Claim Lead
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Log Call Outcome</label>
+                                        <select 
+                                          className="w-full bg-white/[0.03] border border-white/[0.1] text-gray-200 text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-3 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white mb-4 hover:bg-white/[0.05] transition-colors outline-none cursor-pointer"
+                                          onChange={(e) => handleOutcomeSelect(e, lead.id)}
+                                          value=""
+                                          disabled={outcomeUpdating === lead.id || (currentUserRole !== 'admin' && lead.assigned_to !== currentUserUsername)}
+                                          onClick={e => e.stopPropagation()}
+                                        >
+                                          <option value="" disabled>Select outcome...</option>
+                                          {CALL_OUTCOMES.map(o => (
+                                            <option key={o.value} value={o.value}>{o.label}</option>
+                                          ))}
+                                        </select>
+                                      </>
+                                    )}
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); navigate(`/leads/${lead.id}`); }}
                                       className="w-full text-center bg-cyan-500/10 text-cyan-400 text-xs font-semibold uppercase tracking-widest hover:bg-cyan-500/20 hover:text-cyan-300 transition-colors py-3 flex items-center justify-center gap-2 rounded-lg border border-cyan-500/20"
