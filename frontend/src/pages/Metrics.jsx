@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, PhoneCall, CheckCircle, XCircle, Trophy, Activity, RotateCcw } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Users, PhoneCall, CheckCircle, XCircle, Trophy, Activity, RotateCcw, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const COLORS = {
@@ -68,6 +68,33 @@ export default function Metrics() {
     name: name.replace('_', ' '),
     value
   })).filter(d => d.value > 0);
+
+  const sequencePerf = metrics.sequence_performance || {};
+  const dnpData = [
+    { name: 'Day 1', rate: sequencePerf['dnp_day_1']?.rate || 0, sent: sequencePerf['dnp_day_1']?.sent || 0, replied: sequencePerf['dnp_day_1']?.replied || 0 },
+    { name: 'Day 2', rate: sequencePerf['dnp_day_2']?.rate || 0, sent: sequencePerf['dnp_day_2']?.sent || 0, replied: sequencePerf['dnp_day_2']?.replied || 0 },
+    { name: 'Day 3', rate: sequencePerf['dnp_day_3']?.rate || 0, sent: sequencePerf['dnp_day_3']?.sent || 0, replied: sequencePerf['dnp_day_3']?.replied || 0 },
+  ];
+  
+  const fomoData = [
+    { name: 'Day 1', rate: sequencePerf['fomo_day_1']?.rate || 0, sent: sequencePerf['fomo_day_1']?.sent || 0, replied: sequencePerf['fomo_day_1']?.replied || 0 },
+    { name: 'Day 2', rate: sequencePerf['fomo_day_2']?.rate || 0, sent: sequencePerf['fomo_day_2']?.sent || 0, replied: sequencePerf['fomo_day_2']?.replied || 0 },
+    { name: 'Day 3', rate: sequencePerf['fomo_day_3']?.rate || 0, sent: sequencePerf['fomo_day_3']?.sent || 0, replied: sequencePerf['fomo_day_3']?.replied || 0 },
+  ];
+
+  const CustomSequenceTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-[#0f0f13] border border-white/[0.05] p-3 rounded-lg shadow-xl">
+          <p className="text-white font-medium mb-2">{label}</p>
+          <p className="text-emerald-400 text-sm">Response Rate: {data.rate}%</p>
+          <p className="text-gray-400 text-xs mt-1">{data.replied} replies out of {data.sent} sent</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <motion.div 
@@ -233,6 +260,49 @@ export default function Metrics() {
               <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Avg Time Qual → Call</p>
               <p className="text-2xl font-bold text-white tracking-tight">{metrics.avg_time_qualifying_to_call_minutes}m</p>
             </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Sequence Performance Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.div variants={itemVariants} className="glass-card p-8">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-blue-500/10 rounded-xl border border-blue-500/20 flex items-center justify-center">
+              <MessageSquare className="text-blue-400" size={18} />
+            </div>
+            <h3 className="text-lg font-semibold text-white tracking-wide">DNP Sequence Response Rates</h3>
+          </div>
+          <div className="h-64 w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dnpData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} tickFormatter={(val) => `${val}%`} />
+                <Tooltip content={<CustomSequenceTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                <Bar dataKey="rate" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={60} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="glass-card p-8">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center justify-center">
+              <MessageSquare className="text-amber-400" size={18} />
+            </div>
+            <h3 className="text-lg font-semibold text-white tracking-wide">FOMO Sequence Response Rates</h3>
+          </div>
+          <div className="h-64 w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={fomoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} tickFormatter={(val) => `${val}%`} />
+                <Tooltip content={<CustomSequenceTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                <Bar dataKey="rate" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={60} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </motion.div>
       </div>

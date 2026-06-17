@@ -279,6 +279,19 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
             )
             history = result.scalars().all()
 
+            # Mark sequence metrics
+            from core.models import NotificationLog
+            last_notification = await db.execute(
+                select(NotificationLog)
+                .where(NotificationLog.lead_id == lead.id)
+                .where(NotificationLog.sequence_step.is_not(None))
+                .order_by(NotificationLog.sent_at.desc())
+                .limit(1)
+            )
+            last_notif = last_notification.scalars().first()
+            if last_notif and not last_notif.replied:
+                last_notif.replied = True
+
             # GPT reply
             reply, extraction = await process_message(lead, history, combined)
             logger.info(f"[{lead.id}] GPT reply: {reply!r}")
