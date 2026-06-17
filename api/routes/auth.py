@@ -8,11 +8,10 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.models import User
-from passlib.context import CryptContext
+import bcrypt
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class LoginPayload(BaseModel):
     username: str
@@ -36,9 +35,15 @@ async def login(payload: LoginPayload, db: AsyncSession = Depends(get_db)):
     
     # Truncate to 72 bytes, ignoring split unicode characters
     pwd_bytes = payload.password.encode('utf-8')[:72]
-    safe_pwd = pwd_bytes.decode('utf-8', 'ignore')
     
-    if not user or not pwd_context.verify(safe_pwd, user.password_hash):
+    is_valid = False
+    if user and user.password_hash:
+        try:
+            is_valid = bcrypt.checkpw(pwd_bytes, user.password_hash.encode('utf-8'))
+        except Exception:
+            pass
+            
+    if not is_valid:
         raise HTTPException(status_code=401, detail="Invalid credentials")
         
     expiration = datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRY_HOURS)

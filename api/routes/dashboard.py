@@ -476,8 +476,7 @@ async def create_user(payload: CreateUserPayload, db: AsyncSession = Depends(get
         raise HTTPException(status_code=403, detail="Admin access required")
         
     from core.models import User
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    import bcrypt
     
     result = await db.execute(select(User).where(User.username == payload.username))
     if result.scalars().first():
@@ -486,11 +485,11 @@ async def create_user(payload: CreateUserPayload, db: AsyncSession = Depends(get
         
     # Truncate to 72 bytes, ignoring split unicode characters
     pwd_bytes = payload.password.encode('utf-8')[:72]
-    safe_pwd = pwd_bytes.decode('utf-8', 'ignore')
+    hashed = bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode('utf-8')
     
     new_user = User(
         username=payload.username,
-        password_hash=pwd_context.hash(safe_pwd),
+        password_hash=hashed,
         role="sales_rep"
     )
     db.add(new_user)
