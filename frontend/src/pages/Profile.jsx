@@ -7,9 +7,19 @@ import mayaAvatarUrl from '../assets/maya.png';
 export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [userError, setUserError] = useState('');
+
+  const currentUserRole = localStorage.getItem('drootle_role');
 
   useEffect(() => {
     fetchProfile();
+    if (currentUserRole === 'admin') {
+      fetchUsers();
+    }
   }, []);
 
   const fetchProfile = async () => {
@@ -20,6 +30,31 @@ export default function Profile() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get('/dashboard/users');
+      setUsers(res.data);
+    } catch (err) {
+      console.error("Failed to load users", err);
+    }
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setUserError('');
+    setCreatingUser(true);
+    try {
+      await api.post('/dashboard/users', { username: newUsername, password: newPassword });
+      setNewUsername('');
+      setNewPassword('');
+      await fetchUsers();
+    } catch (err) {
+      setUserError(err.response?.data?.detail || err.response?.data?.error || "Failed to create user");
+    } finally {
+      setCreatingUser(false);
     }
   };
 
@@ -90,6 +125,71 @@ export default function Profile() {
           </p>
         </motion.div>
       </div>
+
+      {currentUserRole === 'admin' && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+          className="glass-card p-6 mt-8"
+        >
+          <h2 className="text-lg font-semibold text-white mb-6 uppercase tracking-widest">Sales Team</h2>
+          
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Add Sales Rep</h3>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Username"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="w-full bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                  />
+                </div>
+                {userError && <p className="text-red-400 text-xs font-semibold">{userError}</p>}
+                <button
+                  type="submit"
+                  disabled={creatingUser}
+                  className="w-full bg-white text-black font-semibold py-3 px-4 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 text-sm"
+                >
+                  {creatingUser ? "Creating..." : "Create Account"}
+                </button>
+              </form>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Current Team</h3>
+              <div className="space-y-3">
+                {users.map(u => (
+                  <div key={u.id} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                        <User size={14} className="text-gray-400" />
+                      </div>
+                      <span className="font-medium text-white text-sm">{u.username}</span>
+                    </div>
+                    <span className="text-xs uppercase tracking-widest text-gray-500 font-semibold">{u.role.replace('_', ' ')}</span>
+                  </div>
+                ))}
+                {users.length === 0 && <p className="text-gray-500 text-sm">No users found.</p>}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
