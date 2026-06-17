@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, User, LogOut, ToggleRight, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoUrl from '../assets/logo.jpeg';
@@ -88,7 +88,7 @@ export default function Layout({ children }) {
 
         <div className="p-4 mt-auto border-t border-white/[0.05]">
           <button 
-            onClick={logout}
+            onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3 w-full text-left rounded-xl text-gray-500 hover:bg-white/[0.03] hover:text-gray-200 transition-all duration-300"
           >
             <LogOut size={18} />

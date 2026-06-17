@@ -46,6 +46,7 @@ class Lead(Base):
     # Source tracking
     source_ad = Column(Text, nullable=True)
     sheet_row_index = Column(Integer, nullable=True)
+    assigned_to = Column(Text, index=True, nullable=True)
 
     # Reminders
     call_booked_at = Column(DateTime(timezone=True), nullable=True)
@@ -98,6 +99,8 @@ class NotificationLog(Base):
     recipient = Column(Text, nullable=False)
     message_preview = Column(Text, nullable=True)
     status = Column(Text, default="sent")
+    sequence_step = Column(Text, nullable=True)
+    replied = Column(Boolean, default=False, server_default=text("false"))
     sent_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
