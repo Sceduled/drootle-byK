@@ -9,7 +9,7 @@ from sqlalchemy import select, func, desc, case
 from typing import Optional
 
 from core.database import get_db
-from core.models import Lead, Conversation, StageHistory, SequenceConfig
+from core.models import Lead, Conversation, StageHistory, SequenceConfig, NotificationLog
 from api.routes.auth import get_current_user
 from api.routes.webhooks import get_arq_pool
 from core.config import settings
@@ -200,6 +200,23 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
     opt_out_count = await db.scalar(select(func.count()).select_from(Lead).where(Lead.opted_out == True))
     opt_out_rate = (opt_out_count / total * 100) if total else 0.0
     
+    seq_result = await db.execute(
+        select(
+            NotificationLog.sequence_step,
+            func.count(NotificationLog.id).label("sent"),
+            func.sum(case((NotificationLog.replied == True, 1), else_=0)).label("replied")
+        ).where(NotificationLog.sequence_step.is_not(None))
+        .group_by(NotificationLog.sequence_step)
+    )
+    
+    sequence_performance = {}
+    for row in seq_result:
+        step = row[0]
+        sent = row[1]
+        replied = row[2] or 0
+        rate = round((replied / sent * 100) if sent > 0 else 0, 1)
+        sequence_performance[step] = {"sent": sent, "replied": replied, "rate": rate}
+    
     # Mocking complex historical averages for dashboard visualization purposes
     return {
         "total_leads": total,
@@ -217,7 +234,8 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
             "dnp": 12.5,
             "fomo": 8.0,
             "cold": 1.5
-        }
+        },
+        "sequence_performance": sequence_performance
     }
 
 class ActionPayload(BaseModel):
@@ -466,9 +484,13 @@ async def create_user(payload: CreateUserPayload, db: AsyncSession = Depends(get
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Username already exists")
         
+    # Truncate to 72 bytes, ignoring split unicode characters
+    pwd_bytes = payload.password.encode('utf-8')[:72]
+    safe_pwd = pwd_bytes.decode('utf-8', 'ignore')
+    
     new_user = User(
         username=payload.username,
-        password_hash=pwd_context.hash(payload.password[:72]),
+        password_hash=pwd_context.hash(safe_pwd),
         role="sales_rep"
     )
     db.add(new_user)

@@ -34,7 +34,11 @@ async def login(payload: LoginPayload, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == payload.username))
     user = result.scalars().first()
     
-    if not user or not pwd_context.verify(payload.password[:72], user.password_hash):
+    # Truncate to 72 bytes, ignoring split unicode characters
+    pwd_bytes = payload.password.encode('utf-8')[:72]
+    safe_pwd = pwd_bytes.decode('utf-8', 'ignore')
+    
+    if not user or not pwd_context.verify(safe_pwd, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
         
     expiration = datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRY_HOURS)
