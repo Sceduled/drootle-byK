@@ -34,7 +34,7 @@ async def login(payload: LoginPayload, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == payload.username))
     user = result.scalars().first()
     
-    if not user or not pwd_context.verify(payload.password, user.password_hash):
+    if not user or not pwd_context.verify(payload.password[:72], user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
         
     expiration = datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRY_HOURS)

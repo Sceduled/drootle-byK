@@ -468,7 +468,7 @@ async def create_user(payload: CreateUserPayload, db: AsyncSession = Depends(get
         
     new_user = User(
         username=payload.username,
-        password_hash=pwd_context.hash(payload.password),
+        password_hash=pwd_context.hash(payload.password[:72]),
         role="sales_rep"
     )
     db.add(new_user)
