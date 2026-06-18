@@ -2,10 +2,14 @@
 Simulator routes for testing AI prompts via chat interface.
 """
 from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from typing import List, Dict, Any
 import uuid
+import io
+import csv
 
 from core.database import get_db
 from core.models import SimulationSession, SimulationMessage, Lead
@@ -124,3 +128,28 @@ async def send_simulation_message(
     await db.commit()
     
     return {"reply": reply}
+
+@router.get("/export")
+async def export_simulations(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SimulationMessage)
+        .options(joinedload(SimulationMessage.session))
+        .order_by(SimulationMessage.session_id, SimulationMessage.created_at)
+    )
+    messages = result.scalars().all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Session ID", "Simulated Name", "Timestamp", "Role", "Message"])
+    
+    for msg in messages:
+        name = msg.session.name if msg.session else "Unknown"
+        writer.writerow([str(msg.session_id), name, msg.created_at.isoformat(), msg.role, msg.content])
+        
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=simulation_chats.csv"}
+    )
+

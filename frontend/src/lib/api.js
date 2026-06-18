@@ -13,6 +13,10 @@ export const getSimulationHistory = async (sessionId) => {
   return await api.get(`/simulator/history/${sessionId}`);
 };
 
+export const exportSimulations = async () => {
+  return await api.get('/simulator/export', { responseType: 'blob' });
+};
+
 export const sendSimulationMessage = async (sessionId, message) => {
   return await api.post(`/simulator/chat/${sessionId}`, { message });
 };

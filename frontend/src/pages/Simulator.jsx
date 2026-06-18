@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { startSimulation, getSimulationHistory, sendSimulationMessage } from '../lib/api';
-import { Send, User, Bot, RefreshCw, Loader2 } from 'lucide-react';
+import { startSimulation, getSimulationHistory, sendSimulationMessage, exportSimulations } from '../lib/api';
+import { Send, User, Bot, RefreshCw, Loader2, Download } from 'lucide-react';
 
 export default function Simulator() {
   const [sessionId, setSessionId] = useState(localStorage.getItem('sim_session_id'));
@@ -79,6 +79,21 @@ export default function Simulator() {
     localStorage.removeItem('sim_session_id');
   };
 
+  const handleExport = async () => {
+    try {
+      const res = await exportSimulations();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'simulation_chats.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      console.error("Failed to export simulations", err);
+    }
+  };
+
   if (!sessionId) {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 bg-[#1f2937] rounded-xl border border-gray-800 shadow-2xl">
@@ -106,6 +121,16 @@ export default function Simulator() {
             {starting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Simulation'}
           </button>
         </form>
+
+        <div className="mt-8 pt-6 border-t border-gray-800">
+          <button
+            onClick={handleExport}
+            className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+          >
+            <Download className="w-4 h-4" />
+            Download All Chats (CSV)
+          </button>
+        </div>
       </div>
     );
   }
