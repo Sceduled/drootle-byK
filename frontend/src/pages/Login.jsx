@@ -44,7 +44,7 @@ export default function Login() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-foreground tracking-tight">Lead<span className="text-muted font-normal">AI</span></h2>
+          <h2 className="text-3xl font-bold text-foreground tracking-tight">Kalvron</h2>
           <p className="mt-3 text-sm text-muted">Sign in to your workspace</p>
         </div>
         
