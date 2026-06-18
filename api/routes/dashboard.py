@@ -373,8 +373,8 @@ SEQ_MAPPING = {
     4: ["call_reminder_lead", "call_reminder_sales"],
     5: ["post_call_day1", "post_call_day2", "post_call_day3", "post_call_day5", "post_call_day7"],
     6: ["fomo_day1", "fomo_day2", "fomo_day3"],
-    7: ["reactivation_wk2", "reactivation_wk4", "reactivation_wk6", "reactivation_wk8", "reactivation_wk12"],
-    8: ["closed_day3", "closed_wk2", "closed_mo1", "closed_mo1_fup"],
+    7: ["reactivation_week2", "reactivation_week4", "reactivation_week6", "reactivation_week8", "reactivation_week12"],
+    8: ["closed_day3", "closed_day14", "closed_day30", "closed_day35"],
     9: ["upsell_day1", "upsell_day4", "upsell_day7"],
 }
 

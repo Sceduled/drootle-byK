@@ -604,7 +604,7 @@ async def reactivation_1(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_wk2")
+        msg = get_sequence_message("reactivation_week2")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -616,7 +616,7 @@ async def reactivation_2(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_wk4")
+        msg = get_sequence_message("reactivation_week4")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -628,7 +628,7 @@ async def reactivation_3(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_wk6")
+        msg = get_sequence_message("reactivation_week6")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -640,7 +640,7 @@ async def reactivation_4(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_wk8")
+        msg = get_sequence_message("reactivation_week8")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -652,7 +652,7 @@ async def reactivation_5(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_wk12")
+        msg = get_sequence_message("reactivation_week12")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -700,7 +700,7 @@ async def closed_message_2(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("closed_wk2")
+        msg = get_sequence_message("closed_day14")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -712,7 +712,7 @@ async def closed_message_3(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("closed_mo1")
+        msg = get_sequence_message("closed_day30")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -724,7 +724,7 @@ async def closed_message_4(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("closed_mo1_fup")
+        msg = get_sequence_message("closed_day35")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
