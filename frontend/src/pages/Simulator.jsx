@@ -133,7 +133,7 @@ export default function Simulator() {
         <div className="mt-8 pt-6 border-t border-border">
           <button
             onClick={handleExport}
-            className="w-full bg-gray-800 hover:bg-gray-700 text-foreground-muted font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+            className="w-full bg-card-hover hover:bg-border text-foreground-muted font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
           >
             <Download className="w-4 h-4" />
             Download All Chats (CSV)
@@ -152,7 +152,7 @@ export default function Simulator() {
         </div>
         <button
           onClick={handleRestart}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-red-900/50 text-foreground-muted hover:text-red-400 rounded-lg transition-colors text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-card-hover hover:bg-red-500/10 text-foreground-muted hover:text-red-500 rounded-lg transition-colors text-sm font-medium"
         >
           <RefreshCw className="w-4 h-4" />
           End Session
@@ -169,7 +169,7 @@ export default function Simulator() {
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-emerald-600/20 text-emerald-500' : 'bg-blue-600/20 text-blue-500'}`}>
                     {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
-                  <div className={`px-4 py-3 rounded-2xl ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-gray-800 text-foreground rounded-tl-sm'}`}>
+                  <div className={`px-4 py-3 rounded-2xl ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-card-hover text-foreground rounded-tl-sm'}`}>
                     <p className="whitespace-pre-wrap leading-relaxed text-sm">{msg.content}</p>
                   </div>
                 </div>
@@ -181,7 +181,7 @@ export default function Simulator() {
                   <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-blue-600/20 text-blue-500">
                     <Bot className="w-4 h-4" />
                   </div>
-                  <div className="px-5 py-4 rounded-2xl bg-gray-800 text-muted rounded-tl-sm flex items-center gap-2">
+                  <div className="px-5 py-4 rounded-2xl bg-card-hover text-muted rounded-tl-sm flex items-center gap-2">
                     <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                     <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                     <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -201,7 +201,7 @@ export default function Simulator() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your message..."
                 disabled={loading}
-                className="flex-1 bg-gray-800 border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-emerald-500 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-emerald-500 disabled:opacity-50 transition-colors"
               />
               <button
                 type="submit"

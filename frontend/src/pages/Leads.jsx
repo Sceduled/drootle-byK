@@ -30,7 +30,7 @@ const STATUS_COLORS = {
   cold: 'bg-slate-500/10 text-slate-300 border border-slate-500/20',
   closed: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20',
   upsell: 'bg-yellow-400/10 text-yellow-200 border border-yellow-400/20',
-  archived: 'bg-gray-800/30 text-muted border border-border/50',
+  archived: 'bg-card-hover text-muted border border-border',
   lost: 'bg-red-500/10 text-red-300 border border-red-500/20'
 };
 
@@ -231,7 +231,7 @@ export default function Leads() {
                 className={`flex flex-col justify-center px-6 py-4 rounded-xl border transition-all cursor-pointer min-w-[180px]
                   ${isActive 
                     ? `bg-gradient-to-br ${stage.color} ${stage.border} scale-105 shadow-lg` 
-                    : 'bg-background border-border hover:bg-card-hover opacity-60 hover:opacity-100'
+                    : 'bg-background border-border hover:bg-card-hover text-muted hover:text-foreground'
                   }
                 `}
               >
@@ -251,8 +251,8 @@ export default function Leads() {
           </div>
         ) : activeLeads.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-muted font-medium text-lg mb-2">No leads found</p>
-            <p className="text-gray-600 text-sm">There are no leads currently in the "{PIPELINE_STAGES.find(s => s.id === activeStageId)?.label}" stage.</p>
+            <p className="text-foreground-muted font-medium text-lg mb-2">No leads found</p>
+            <p className="text-muted text-sm">There are no leads currently in the "{PIPELINE_STAGES.find(s => s.id === activeStageId)?.label}" stage.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -267,7 +267,7 @@ export default function Leads() {
                   <th className="px-6 py-4 text-right">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.02]">
+              <tbody className="divide-y divide-border">
                 {activeLeads.map((lead) => {
                   
                   // Construct Summary Logic
