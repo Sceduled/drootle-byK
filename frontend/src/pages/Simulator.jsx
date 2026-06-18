@@ -159,7 +159,7 @@ export default function Simulator() {
         </button>
       </div>
 
-      <div className="flex-1 flex gap-6 overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 overflow-hidden">
         {/* Chat window */}
         <div className="flex-[2] bg-card border border-border rounded-xl overflow-hidden flex flex-col shadow-2xl">
           <div className="flex-1 p-4 overflow-y-auto space-y-6">
