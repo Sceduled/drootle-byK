@@ -52,7 +52,7 @@ async def call_gpt(messages: list, response_format: str = "text") -> str:
                 else:
                     return "Thanks for that! Give me just a moment... 😊"
 
-async def process_message(lead, conversation_history: list, new_message: str, is_voice: bool = False) -> tuple[str, dict]:
+async def process_message(lead, conversation_history: list, new_message: str, is_voice: bool = False, language_instruction: str = "") -> tuple[str, dict]:
     logger.info(f"Running dual GPT-4o calls for lead_id: {lead.id} (is_voice={is_voice})")
     
     lead_summary = f"""
@@ -67,6 +67,9 @@ Lead Score: {lead.lead_score or 'not yet known'}
 """
     
     sys_prompt_conv = get_system_prompt(lead_summary)
+    if language_instruction:
+        sys_prompt_conv += f"\n\n{language_instruction}"
+
     
     history_arr = []
     for conv in conversation_history:
