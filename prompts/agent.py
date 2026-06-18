@@ -48,7 +48,7 @@ Rules for Extraction:
   "monthly_ad_budget": null,
   "ads_experience": null,
   "pain_point": null,
-  "urgency": null,
+  "urgency": null, // fill with: "immediate", "1-3 months", "3-6 months", "just exploring"
   "preferred_call_time": null, // Extract the MOST RECENTLY agreed upon time if there are multiple
   "lead_score": null,
   "conv_status": null,

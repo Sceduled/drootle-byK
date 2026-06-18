@@ -20,7 +20,7 @@ Industry: {lead.industry or 'Not specified'}
 Markets: {markets_str}
 Budget: {lead.monthly_ad_budget or 'Not specified'}
 Pain: {lead.pain_point or 'Not specified'}
-Urgency: {lead.urgency or 'Not specified'}
+⏳ Urgency: {lead.urgency or 'Not specified'}
 📞 Call at: {lead.preferred_call_time or 'No time given'}
 Phone: {lead.phone}""".strip()
 
