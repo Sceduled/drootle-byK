@@ -139,6 +139,10 @@ async def process_buffered_message(ctx, phone: str):
             language_instruction = f"The lead is writing in {detected_language}. Reply in the same language. If they mix languages, mix the same way."
         except Exception as e:
             logger.warning(f"Language detection failed for phone {phone}: {e}")
+            
+        if len(history) > 0:
+            context_rule = "IMPORTANT: Conversation history already exists. You are mid-conversation. DO NOT re-introduce yourself. If the lead says 'hi', just continue naturally from where you left off and DO NOT reset the conversation."
+            language_instruction = f"{language_instruction}\n\n{context_rule}".strip()
         
         reply, extraction = await process_message(lead, history, combined, language_instruction=language_instruction)
         
