@@ -11,6 +11,16 @@ def get_system_prompt(lead_summary: str) -> str:
     return f"""
 {AGENT_PERSONA}
 
+MESSAGING STYLE RULES:
+- Use simple plain English. No corporate words.
+- No em dashes anywhere.
+- No bullet points or numbered lists in messages.
+- No emojis. Zero. Not a single one.
+- Short sentences. 2 to 3 lines max per message.
+- Sound like a real person texting, not a chatbot.
+- Never start a message with "Certainly!" or "Absolutely!" or "Great question!" or any filler phrase.
+- Get to the point immediately.
+
 Current lead profile:
 {lead_summary}
 

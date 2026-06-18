@@ -107,53 +107,53 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 1: FIRST TOUCH ──────────────────────
     "first_touch": (
-        "Hi {name}! 👋 I'm Priya from Prestige Raintree Park "
+        "Hi {name}!  I'm Priya from Prestige Raintree Park "
         "in Whitefield. You had enquired about our project — "
         "happy to help! Are you looking for a home to move in "
-        "or an investment? 😊"
+        "or an investment? "
     ),
 
     # ── SEQUENCE 2: QUALIFICATION NUDGE ──────────────
     "qual_nudge_24h": (
         "Hey {name}, just checking in! "
         "Still exploring options in Whitefield? "
-        "Happy to answer any questions 😊"
+        "Happy to answer any questions "
     ),
 
     # ── SEQUENCE 3: DNP RECOVERY ──────────────────────
     "dnp_day1": (
         "Hey {name}! Just wanted to check — "
         "did you get a chance to look at the details? "
-        "Happy to help if you have any questions 😊"
+        "Happy to help if you have any questions "
     ),
     "dnp_day2": (
         "Hi {name}! Thought this might be useful — "
         "Prestige Raintree Park overlooks Varthur Lake "
         "and is one of the few projects in Whitefield "
         "with this kind of view and space. "
-        "Most people who visit end up loving it 🏡"
+        "Most people who visit end up loving it "
     ),
     "dnp_day3": (
         "No worries {name}, I understand timing might not "
         "be right. Whenever you're ready, I'm here. "
-        "Just drop me a message 🙏"
+        "Just drop me a message "
     ),
     "dnp_day5": (
         "Hi {name}, I'll stop following up after this — "
         "just didn't want to close your enquiry "
         "without checking one last time. "
-        "Still interested in Whitefield? 🙏"
+        "Still interested in Whitefield? "
     ),
 
     # ── SEQUENCE 4: CALL REMINDERS ────────────────────
     "call_reminder_lead": (
-        "Hi {name}! 😊 Just a reminder — "
+        "Hi {name}!  Just a reminder — "
         "our team will be calling you at {time} today "
         "to discuss Prestige Raintree Park. "
         "Looking forward to it!"
     ),
     "call_reminder_sales": (
-        "📞 SITE VISIT LEAD\n"
+        " SITE VISIT LEAD\n"
         "{name}\n"
         "Score: {score}\n"
         "BHK Interest: {industry}\n"
@@ -165,7 +165,7 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 5: POST-CALL VALIDATION ─────────────
     "post_call_day1": (
-        "Hi {name}! Great speaking today 😊 "
+        "Hi {name}! Great speaking today  "
         "Hope the call was helpful. "
         "Our team will follow up with the details "
         "we discussed — site visit date, floor plan, "
@@ -176,14 +176,14 @@ SEQUENCE_MESSAGES = {
         "an IT professional like yourself — "
         "was in two minds about Whitefield. "
         "One site visit and they booked within a week. "
-        "Sometimes seeing it in person makes all the difference 🏡"
+        "Sometimes seeing it in person makes all the difference "
     ),
     "post_call_day3": (
         "'{name} was very helpful and patient, "
         "never felt pressured. The project itself "
         "exceeded our expectations on the visit.' "
         "— This is what one of our recent buyers shared. "
-        "We'd love for you to experience it too 🙏"
+        "We'd love for you to experience it too "
     ),
     "post_call_day5": (
         "Hi {name}! I remember you mentioned {pain_point}. "
@@ -197,7 +197,7 @@ SEQUENCE_MESSAGES = {
         "are you still exploring Prestige Raintree Park? "
         "We'd love to have you visit this week. "
         "Even a quick 45-min visit gives you "
-        "a much clearer picture 😊"
+        "a much clearer picture "
     ),
 
     # ── SEQUENCE 6: FOMO ──────────────────────────────
@@ -206,7 +206,7 @@ SEQUENCE_MESSAGES = {
         "we've had a lot of interest in the "
         "lake-facing units this week. "
         "Inventory in that category is moving. "
-        "Just wanted you to have the full picture 🙏"
+        "Just wanted you to have the full picture "
     ),
     "fomo_day2": (
         "Hi {name}, two families from the same "
@@ -220,12 +220,12 @@ SEQUENCE_MESSAGES = {
         "after this — I know you're busy. "
         "If you'd like to visit before we close "
         "the current pricing, just say the word "
-        "and I'll arrange it immediately 🙏"
+        "and I'll arrange it immediately "
     ),
 
     # ── SEQUENCE 7: LEAD RECOVERY ─────────────────────
     "reactivation_week2": (
-        "Hi {name}! Hope you're doing well 😊 "
+        "Hi {name}! Hope you're doing well  "
         "Whitefield has seen some interesting "
         "price movement lately — "
         "thought you might find this useful "
@@ -236,30 +236,30 @@ SEQUENCE_MESSAGES = {
         "Whitefield is getting better every month — "
         "KR Puram metro is already making a big "
         "difference for residents here. "
-        "Just thought of you 😊"
+        "Just thought of you "
     ),
     "reactivation_week6": (
         "Hey {name}! Things change — "
         "still keeping an eye out for property "
-        "in Whitefield or have you sorted it? 😊"
+        "in Whitefield or have you sorted it? "
     ),
     "reactivation_week8": (
         "Hi {name}! We have a few NRI buyers "
         "who couldn't visit in person "
         "and we arranged virtual walkthroughs for them. "
         "If that's something that works better for you, "
-        "happy to set it up 😊"
+        "happy to set it up "
     ),
     "reactivation_week12": (
         "Hi {name}, I'll close your enquiry after this "
         "so I don't keep bothering you. "
         "If anything has changed and you'd like "
-        "to explore again, I'm just a message away 🙏"
+        "to explore again, I'm just a message away "
     ),
 
     # ── SEQUENCE 8: CLOSED / REFERRAL + REVIEW ────────
     "closed_day3": (
-        "Hi {name}! Welcome to the Prestige family! 🎉 "
+        "Hi {name}! Welcome to the Prestige family!  "
         "So excited for you. "
         "Our team will be in touch with the next steps — "
         "documentation, payment schedule, and your "
@@ -267,7 +267,7 @@ SEQUENCE_MESSAGES = {
     ),
     "closed_day14": (
         "Hi {name}! Hope the onboarding process "
-        "has been smooth so far 😊 "
+        "has been smooth so far  "
         "Any questions or anything you need — "
         "just reach out, happy to help."
     ),
@@ -276,14 +276,14 @@ SEQUENCE_MESSAGES = {
         "do you know anyone looking for a home "
         "or investment in Whitefield? "
         "Would mean a lot if you could refer them. "
-        "Happy to take care of them the same way 🙏"
+        "Happy to take care of them the same way "
     ),
     "closed_day35": (
         "Hi {name}! If you've had a good experience "
         "so far, would you mind sharing a quick "
         "2-line review? "
         "It really helps other families "
-        "make the right decision 🙏"
+        "make the right decision "
     ),
 
     # ── SEQUENCE 9: UPSELL ────────────────────────────
@@ -291,19 +291,19 @@ SEQUENCE_MESSAGES = {
         "Hi {name}! Now that your home is sorted, "
         "have you thought about a commercial unit "
         "or a second property for investment? "
-        "Whitefield commercial is doing really well 😊"
+        "Whitefield commercial is doing really well "
     ),
     "upsell_day4": (
         "Hi {name}! One of our buyers picked up "
         "a 2BHK in the same project as an investment "
         "alongside their primary home. "
         "Rental yield in Whitefield is strong "
-        "right now — just something to consider 😊"
+        "right now — just something to consider "
     ),
     "upsell_day7": (
         "Hi {name}! Want me to have our investment "
         "advisory team give you a quick call? "
         "No pressure — just to see if it makes "
-        "sense for your situation 😊"
+        "sense for your situation "
     ),
 }
