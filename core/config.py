@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # Sales team
     SALES_TEAM_WHATSAPP_NUMBERS: str = ""
+    SALES_MANAGER_NUMBER: str = ""
 
     # Auth
     JWT_SECRET: str

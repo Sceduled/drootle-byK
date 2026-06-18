@@ -3,6 +3,7 @@ from client_config import (
     AGENT_PERSONA, QUALIFICATION_QUESTIONS,
     SEQUENCE_MESSAGES
 )
+from core.config import settings
 
 def get_system_prompt(lead_summary: str) -> str:
     questions_text = "\n".join(
@@ -20,6 +21,10 @@ MESSAGING STYLE RULES:
 - Sound like a real person texting, not a chatbot.
 - Never start a message with "Certainly!" or "Absolutely!" or "Great question!" or any filler phrase.
 - Get to the point immediately.
+
+When lead is urgent and wants a callback, say: 
+'Our sales manager will call you on this number shortly. Please keep your phone handy.'
+Sales manager number if needed: {settings.SALES_MANAGER_NUMBER}
 
 Current lead profile:
 {lead_summary}
