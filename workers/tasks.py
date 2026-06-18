@@ -13,7 +13,7 @@ from sqlalchemy import select, text
 
 from core.config import settings
 from core.database import AsyncSessionLocal
-from core.models import Lead, Conversation, NotificationLog, WebhookEvent, AnalyticsEvent
+from core.models import Lead, Conversation, NotificationLog
 from core.job_guard import can_send_message
 from prompts.agent import get_sequence_message
 from services.whatsapp import send_message
