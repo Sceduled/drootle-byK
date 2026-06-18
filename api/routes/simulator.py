@@ -159,11 +159,13 @@ async def export_simulations(db: AsyncSession = Depends(get_db)):
     
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Session ID", "Simulated Name", "Timestamp", "Role", "Message"])
+    writer.writerow(["Session ID", "Simulated Name", "Lead Score", "AI Summary", "Timestamp", "Role", "Message"])
     
     for msg in messages:
         name = msg.session.name if msg.session else "Unknown"
-        writer.writerow([str(msg.session_id), name, msg.created_at.isoformat(), msg.role, msg.content])
+        score = msg.session.lead_score if msg.session else ""
+        summary = msg.session.ai_summary if msg.session else ""
+        writer.writerow([str(msg.session_id), name, score, summary, msg.created_at.isoformat(), msg.role, msg.content])
         
     output.seek(0)
     return StreamingResponse(
