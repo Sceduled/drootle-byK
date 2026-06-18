@@ -70,6 +70,9 @@ Lead Score: {lead.lead_score or 'not yet known'}
     if language_instruction:
         sys_prompt_conv = f"{language_instruction}\n\n{sys_prompt_conv}"
 
+    logger.info(f"System prompt length: {len(sys_prompt_conv)}")
+    logger.info(f"System prompt preview: {sys_prompt_conv[:500]}")
+
     
     history_arr = []
     for conv in conversation_history:
