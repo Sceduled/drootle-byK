@@ -68,7 +68,7 @@ Lead Score: {lead.lead_score or 'not yet known'}
     
     sys_prompt_conv = get_system_prompt(lead_summary)
     if language_instruction:
-        sys_prompt_conv += f"\n\n{language_instruction}"
+        sys_prompt_conv = f"{language_instruction}\n\n{sys_prompt_conv}"
 
     
     history_arr = []

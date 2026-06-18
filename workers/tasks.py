@@ -126,11 +126,14 @@ async def process_buffered_message(ctx, phone: str):
         
         language_instruction = ""
         try:
-            from langdetect import detect
+            from langdetect import detect, DetectorFactory
+            DetectorFactory.seed = 0
             
-            user_history = [msg.content for msg in history if msg.role == 'user']
-            recent_lead_messages = user_history[-2:] + [combined]
-            text_to_detect = " ".join(recent_lead_messages)
+            lead_messages = [msg.content for msg in history if msg.role == 'user']
+            if combined:
+                lead_messages.append(combined)
+                
+            text_to_detect = " ".join(lead_messages[-5:])
             
             try:
                 lang_code = detect(text_to_detect)
@@ -138,18 +141,23 @@ async def process_buffered_message(ctx, phone: str):
                 lang_code = "en"
                 
             lang_map = {
-                'kn': 'Kannada',
-                'te': 'Telugu',
-                'ta': 'Tamil',
-                'hi': 'Hindi',
-                'en': 'English'
+                "hi": "Hindi",
+                "ta": "Tamil", 
+                "kn": "Kannada",
+                "te": "Telugu",
+                "en": "English"
             }
-            detected = lang_map.get(lang_code, 'English')
+            detected_lang = lang_map.get(lang_code, "English")
             
-            logger.info(f"Detected language: {lang_code} ({detected}) for message: {text_to_detect[:50]}")
+            logger.info(f"Lead messages sample: {text_to_detect[:100]}")
+            logger.info(f"Detected: {lang_code} -> {detected_lang}")
             
-            language_instruction = f"CRITICAL: Lead is communicating in {detected}.\nYou MUST respond ONLY in {detected}.\nThis is non-negotiable.\nEven if they mix languages, match their exact style."
-            logger.info(f"System prompt language instruction: {language_instruction}")
+            language_instruction = f"""LANGUAGE INSTRUCTION - HIGHEST PRIORITY:
+The lead is writing in {detected_lang}.
+You MUST reply in {detected_lang} from now.
+Do not use English if detected language is not English.
+Match their exact style and mix if they mix.
+This overrides all other instructions."""
             
         except Exception as e:
             logger.warning(f"Language detection failed for phone {phone}: {e}")
