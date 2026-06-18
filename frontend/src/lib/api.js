@@ -4,6 +4,19 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api'
 });
 
+// Simulator
+export const startSimulation = async (name) => {
+  return await api.post('/simulator/start', { name });
+};
+
+export const getSimulationHistory = async (sessionId) => {
+  return await api.get(`/simulator/history/${sessionId}`);
+};
+
+export const sendSimulationMessage = async (sessionId, message) => {
+  return await api.post(`/simulator/chat/${sessionId}`, { message });
+};
+
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('drootle_token');
   if (token) {

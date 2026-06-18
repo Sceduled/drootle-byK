@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, User, LogOut, ToggleRight, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, User, LogOut, ToggleRight, Menu, X, MessageSquareCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoUrl from '../assets/logo.jpeg';
 
@@ -20,6 +20,7 @@ export default function Layout({ children }) {
     { name: 'Leads', path: '/leads', icon: Users },
     { name: 'Metrics', path: '/metrics', icon: LayoutDashboard },
     { name: 'Sequences', path: '/sequences', icon: ToggleRight },
+    { name: 'Simulator', path: '/simulator', icon: MessageSquareCode },
     { name: 'Profile', path: '/profile', icon: User },
   ];
 

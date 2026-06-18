@@ -10,7 +10,7 @@ import traceback
 
 from core.database import test_connection as test_db
 from core.redis import test_connection as test_redis
-from api.routes import webhooks, dashboard, auth, admin
+from api.routes import webhooks, dashboard, auth, admin, simulator
 from client_config import CLIENT_BRAND
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -46,6 +46,7 @@ app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(simulator.router, prefix="/api/simulator", tags=["simulator"])
 
 @app.on_event("startup")
 async def startup_event():

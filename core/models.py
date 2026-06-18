@@ -127,9 +127,33 @@ class StageHistory(Base):
 class SequenceConfig(Base):
     __tablename__ = "sequence_config"
 
+    id = Column(Integer, primary_key=True, index=True)
+    sequence_number = Column(Integer, unique=True, index=True)
+    sequence_name = Column(String)
+    enabled = Column(Boolean, default=True)
+
+
+class SimulationSession(Base):
+    __tablename__ = "simulation_sessions"
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    sequence_number = Column(Integer, unique=True, nullable=False)
-    sequence_name = Column(Text, nullable=False)
-    enabled = Column(Boolean, default=True, server_default=text("true"))
+    name = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    messages = relationship("SimulationMessage", back_populates="session", cascade="all, delete-orphan")
+
+
+class SimulationMessage(Base):
+    __tablename__ = "simulation_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("simulation_sessions.id"), nullable=False)
+    role = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    session = relationship("SimulationSession", back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_sim_messages_session_id_created_at_desc", "session_id", text("created_at DESC")),
+    )
