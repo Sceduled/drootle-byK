@@ -127,16 +127,20 @@ async def process_buffered_message(ctx, phone: str):
         language_instruction = ""
         try:
             from langdetect import detect
-            lang_code = detect(combined)
+            try:
+                lang_code = detect(combined)
+            except:
+                lang_code = "en"
+                
             lang_map = {
-                'kn': 'Kannada',
                 'hi': 'Hindi',
+                'kn': 'Kannada', 
                 'te': 'Telugu',
                 'ta': 'Tamil',
                 'en': 'English'
             }
-            detected_language = lang_map.get(lang_code, 'English')
-            language_instruction = f"The lead is writing in {detected_language}. Reply in the same language. If they mix languages, mix the same way."
+            detected = lang_map.get(lang_code, 'English')
+            language_instruction = f"IMPORTANT: The lead is writing in {detected}. \nYou MUST reply in {detected}. \nIf they mix languages, mix the same way.\nDo not reply in English if they write in Hindi."
         except Exception as e:
             logger.warning(f"Language detection failed for phone {phone}: {e}")
             
