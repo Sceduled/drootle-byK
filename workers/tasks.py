@@ -13,11 +13,11 @@ from sqlalchemy import select, text
 
 from core.config import settings
 from core.database import AsyncSessionLocal
-from core.models import Lead, Conversation, NotificationLog
+from core.models import Lead, Conversation, NotificationLog, WebhookEvent, AnalyticsEvent
 from core.job_guard import can_send_message
 from prompts.agent import get_sequence_message
 from services.whatsapp import send_message
-from services.gpt import process_message, call_gpt_mini
+from services.gpt import process_message, call_gpt_mini, generate_summary_from_history_text
 from services.sheets import update_lead_row
 from services.notifications import notify_sales_qualification, notify_sales_stalled, notify_sales_escalation, notify_sales_opt_out, notify_close_intent, notify_cold_reengaged, notify_archived_reengaged
 from utils.job_guard import can_send_message
@@ -967,15 +967,7 @@ async def generate_lead_summary(ctx, lead_id: str):
         if not conversations: return
         
         history_text = "\n".join([f"{msg.role}: {msg.content}" for msg in conversations])
-        prompt = f"""You are an expert sales assistant. Read the following WhatsApp conversation between an AI assistant and a lead.
-Write a highly professional, 2-to-3 sentence executive summary of the lead's situation.
-Focus on their pain points, what they are looking for, their budget (if mentioned), and timeline (if mentioned).
-Do NOT write 'The lead says...' or 'The AI asked...'. Just state the facts directly as a professional CRM report.
-
-Conversation:
-{history_text}
-"""
-        summary = await call_gpt_mini(prompt)
+        summary = await generate_summary_from_history_text(history_text)
         if summary and summary != "UNABLE_TO_PARSE":
             lead.ai_summary = summary
             await db.commit()

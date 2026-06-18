@@ -49,7 +49,7 @@ export default function Metrics() {
     </div>
   );
   if (error) return <div className="p-8 text-red-400 flex items-center gap-2"><XCircle /> {error}</div>;
-  if (!metrics) return <div className="p-8 text-gray-400">No metrics data available.</div>;
+  if (!metrics) return <div className="p-8 text-muted">No metrics data available.</div>;
 
   const scoreData = [
     { name: 'HOT', value: metrics.hot_count },
@@ -86,10 +86,10 @@ export default function Metrics() {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#0f0f13] border border-white/[0.05] p-3 rounded-lg shadow-xl">
-          <p className="text-white font-medium mb-2">{label}</p>
+        <div className="bg-card border border-border p-3 rounded-lg shadow-xl">
+          <p className="text-foreground font-medium mb-2">{label}</p>
           <p className="text-emerald-400 text-sm">Response Rate: {data.rate}%</p>
-          <p className="text-gray-400 text-xs mt-1">{data.replied} replies out of {data.sent} sent</p>
+          <p className="text-muted text-xs mt-1">{data.replied} replies out of {data.sent} sent</p>
         </div>
       );
     }
@@ -105,8 +105,8 @@ export default function Metrics() {
     >
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Lifecycle Metrics</h1>
-          <p className="text-gray-400 mt-1">Real-time performance of your AI agents and sales funnel</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Lifecycle Metrics</h1>
+          <p className="text-muted mt-1">Real-time performance of your AI agents and sales funnel</p>
         </div>
       </div>
 
@@ -115,14 +115,14 @@ export default function Metrics() {
         <motion.div variants={itemVariants} className="glass-card p-6 relative overflow-hidden group">
           <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Total Leads</p>
-              <h3 className="text-4xl font-bold text-white mt-2 tracking-tight">{metrics.total_leads}</h3>
+              <p className="text-xs font-semibold text-muted uppercase tracking-widest">Total Leads</p>
+              <h3 className="text-4xl font-bold text-foreground mt-2 tracking-tight">{metrics.total_leads}</h3>
             </div>
-            <div className="w-12 h-12 bg-white/[0.03] border border-white/[0.05] rounded-xl flex items-center justify-center text-gray-400 group-hover:text-white transition-colors">
+            <div className="w-12 h-12 bg-card-hover border border-border rounded-xl flex items-center justify-center text-muted group-hover:text-foreground transition-colors">
               <Users size={24} strokeWidth={1.5} />
             </div>
           </div>
-          <div className="mt-6 text-sm text-gray-500 relative z-10 flex items-center gap-2">
+          <div className="mt-6 text-sm text-muted relative z-10 flex items-center gap-2">
             <span className="font-medium text-emerald-400">+{metrics.leads_today}</span> today
           </div>
         </motion.div>
@@ -130,29 +130,29 @@ export default function Metrics() {
         <motion.div variants={itemVariants} className="glass-card p-6 relative overflow-hidden group">
           <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Awaiting Call</p>
-              <h3 className="text-4xl font-bold text-white mt-2 tracking-tight">{metrics.leads_by_stage?.awaiting_call || 0}</h3>
+              <p className="text-xs font-semibold text-muted uppercase tracking-widest">Awaiting Call</p>
+              <h3 className="text-4xl font-bold text-foreground mt-2 tracking-tight">{metrics.leads_by_stage?.awaiting_call || 0}</h3>
             </div>
-            <div className="w-12 h-12 bg-white/[0.03] border border-white/[0.05] rounded-xl flex items-center justify-center text-gray-400 group-hover:text-white transition-colors">
+            <div className="w-12 h-12 bg-card-hover border border-border rounded-xl flex items-center justify-center text-muted group-hover:text-foreground transition-colors">
               <PhoneCall size={24} strokeWidth={1.5} />
             </div>
           </div>
-          <div className="mt-6 text-sm text-gray-500 relative z-10">
-            <span className="text-gray-300 font-medium">{metrics.conversion_qualifying_to_call}%</span> conv. from qualified
+          <div className="mt-6 text-sm text-muted relative z-10">
+            <span className="text-foreground-muted font-medium">{metrics.conversion_qualifying_to_call}%</span> conv. from qualified
           </div>
         </motion.div>
 
         <motion.div variants={itemVariants} className="glass-card p-6 relative overflow-hidden group">
           <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Deals Closed</p>
-              <h3 className="text-4xl font-bold text-white mt-2 tracking-tight">{metrics.leads_by_stage?.closed || 0}</h3>
+              <p className="text-xs font-semibold text-muted uppercase tracking-widest">Deals Closed</p>
+              <h3 className="text-4xl font-bold text-foreground mt-2 tracking-tight">{metrics.leads_by_stage?.closed || 0}</h3>
             </div>
-            <div className="w-12 h-12 bg-white/[0.03] border border-white/[0.05] rounded-xl flex items-center justify-center text-gray-400 group-hover:text-white transition-colors">
+            <div className="w-12 h-12 bg-card-hover border border-border rounded-xl flex items-center justify-center text-muted group-hover:text-foreground transition-colors">
               <Trophy size={24} strokeWidth={1.5} />
             </div>
           </div>
-          <div className="mt-6 text-sm text-gray-500 relative z-10">
+          <div className="mt-6 text-sm text-muted relative z-10">
             <span className="text-emerald-400 font-medium">{metrics.conversion_call_to_closed}%</span> close rate from calls
           </div>
         </motion.div>
@@ -160,14 +160,14 @@ export default function Metrics() {
         <motion.div variants={itemVariants} className="glass-card p-6 relative overflow-hidden group">
           <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Lost / Opt-Out</p>
-              <h3 className="text-4xl font-bold text-white mt-2 tracking-tight">{metrics.leads_by_stage?.lost || 0}</h3>
+              <p className="text-xs font-semibold text-muted uppercase tracking-widest">Lost / Opt-Out</p>
+              <h3 className="text-4xl font-bold text-foreground mt-2 tracking-tight">{metrics.leads_by_stage?.lost || 0}</h3>
             </div>
-            <div className="w-12 h-12 bg-white/[0.03] border border-white/[0.05] rounded-xl flex items-center justify-center text-gray-400 group-hover:text-white transition-colors">
+            <div className="w-12 h-12 bg-card-hover border border-border rounded-xl flex items-center justify-center text-muted group-hover:text-foreground transition-colors">
               <XCircle size={24} strokeWidth={1.5} />
             </div>
           </div>
-          <div className="mt-6 text-sm text-gray-500 relative z-10">
+          <div className="mt-6 text-sm text-muted relative z-10">
             <span className="text-red-400 font-medium">{metrics.opt_out_rate}%</span> opt-out rate
           </div>
         </motion.div>
@@ -179,16 +179,16 @@ export default function Metrics() {
         {/* Recovery Rates */}
         <motion.div variants={itemVariants} className="glass-card p-8">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-white/[0.03] rounded-xl border border-white/[0.05] flex items-center justify-center">
-              <RotateCcw className="text-gray-300" size={18} />
+            <div className="w-10 h-10 bg-card-hover rounded-xl border border-border flex items-center justify-center">
+              <RotateCcw className="text-foreground-muted" size={18} />
             </div>
-            <h3 className="text-lg font-semibold text-white tracking-wide">AI Sequence Recovery Rates</h3>
+            <h3 className="text-lg font-semibold text-foreground tracking-wide">AI Sequence Recovery Rates</h3>
           </div>
           <div className="space-y-8">
             <div>
               <div className="flex justify-between mb-3">
-                <span className="text-sm font-medium text-gray-400">Sequence 3: DNP Recovery</span>
-                <span className="text-sm font-semibold text-gray-200">{metrics.sequence_recovery_rate?.dnp}%</span>
+                <span className="text-sm font-medium text-muted">Sequence 3: DNP Recovery</span>
+                <span className="text-sm font-semibold text-foreground-muted">{metrics.sequence_recovery_rate?.dnp}%</span>
               </div>
               <div className="w-full bg-white/[0.05] rounded-full h-1.5 overflow-hidden">
                 <motion.div 
@@ -201,8 +201,8 @@ export default function Metrics() {
             </div>
             <div>
               <div className="flex justify-between mb-3">
-                <span className="text-sm font-medium text-gray-400">Sequence 6: FOMO Revival</span>
-                <span className="text-sm font-semibold text-gray-200">{metrics.sequence_recovery_rate?.fomo}%</span>
+                <span className="text-sm font-medium text-muted">Sequence 6: FOMO Revival</span>
+                <span className="text-sm font-semibold text-foreground-muted">{metrics.sequence_recovery_rate?.fomo}%</span>
               </div>
               <div className="w-full bg-white/[0.05] rounded-full h-1.5 overflow-hidden">
                 <motion.div 
@@ -215,8 +215,8 @@ export default function Metrics() {
             </div>
             <div>
               <div className="flex justify-between mb-3">
-                <span className="text-sm font-medium text-gray-400">Sequence 7: Cold Reactivation</span>
-                <span className="text-sm font-semibold text-gray-200">{metrics.sequence_recovery_rate?.cold}%</span>
+                <span className="text-sm font-medium text-muted">Sequence 7: Cold Reactivation</span>
+                <span className="text-sm font-semibold text-foreground-muted">{metrics.sequence_recovery_rate?.cold}%</span>
               </div>
               <div className="w-full bg-white/[0.05] rounded-full h-1.5 overflow-hidden">
                 <motion.div 
@@ -233,10 +233,10 @@ export default function Metrics() {
         {/* Funnel Chart */}
         <motion.div variants={itemVariants} className="glass-card p-8 flex flex-col">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-white/[0.03] rounded-xl border border-white/[0.05] flex items-center justify-center">
-              <Activity className="text-gray-300" size={18} />
+            <div className="w-10 h-10 bg-card-hover rounded-xl border border-border flex items-center justify-center">
+              <Activity className="text-foreground-muted" size={18} />
             </div>
-            <h3 className="text-lg font-semibold text-white tracking-wide">Sales Funnel</h3>
+            <h3 className="text-lg font-semibold text-foreground tracking-wide">Sales Funnel</h3>
           </div>
           <div className="h-56 w-full relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -251,14 +251,14 @@ export default function Metrics() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-auto grid grid-cols-2 gap-4 border-t border-white/[0.05] pt-6">
-            <div className="bg-white/[0.02] p-4 rounded-xl border border-white/[0.05]">
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Avg Time to Qualify</p>
-              <p className="text-2xl font-bold text-white tracking-tight">{metrics.avg_time_to_qualify_minutes}m</p>
+          <div className="mt-auto grid grid-cols-2 gap-4 border-t border-border pt-6">
+            <div className="bg-card-hover p-4 rounded-xl border border-border">
+              <p className="text-xs text-muted uppercase tracking-widest mb-1">Avg Time to Qualify</p>
+              <p className="text-2xl font-bold text-foreground tracking-tight">{metrics.avg_time_to_qualify_minutes}m</p>
             </div>
-            <div className="bg-white/[0.02] p-4 rounded-xl border border-white/[0.05]">
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Avg Time Qual → Call</p>
-              <p className="text-2xl font-bold text-white tracking-tight">{metrics.avg_time_qualifying_to_call_minutes}m</p>
+            <div className="bg-card-hover p-4 rounded-xl border border-border">
+              <p className="text-xs text-muted uppercase tracking-widest mb-1">Avg Time Qual → Call</p>
+              <p className="text-2xl font-bold text-foreground tracking-tight">{metrics.avg_time_qualifying_to_call_minutes}m</p>
             </div>
           </div>
         </motion.div>
@@ -271,7 +271,7 @@ export default function Metrics() {
             <div className="w-10 h-10 bg-blue-500/10 rounded-xl border border-blue-500/20 flex items-center justify-center">
               <MessageSquare className="text-blue-400" size={18} />
             </div>
-            <h3 className="text-lg font-semibold text-white tracking-wide">DNP Sequence Response Rates</h3>
+            <h3 className="text-lg font-semibold text-foreground tracking-wide">DNP Sequence Response Rates</h3>
           </div>
           <div className="h-64 w-full relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -291,7 +291,7 @@ export default function Metrics() {
             <div className="w-10 h-10 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center justify-center">
               <MessageSquare className="text-amber-400" size={18} />
             </div>
-            <h3 className="text-lg font-semibold text-white tracking-wide">FOMO Sequence Response Rates</h3>
+            <h3 className="text-lg font-semibold text-foreground tracking-wide">FOMO Sequence Response Rates</h3>
           </div>
           <div className="h-64 w-full relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -310,7 +310,7 @@ export default function Metrics() {
       {/* Stage Breakdown Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <motion.div variants={itemVariants} className="glass-card p-8">
-          <h3 className="text-lg font-semibold text-white tracking-wide mb-8 text-center">Stage Breakdown</h3>
+          <h3 className="text-lg font-semibold text-foreground tracking-wide mb-8 text-center">Stage Breakdown</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -332,16 +332,16 @@ export default function Metrics() {
           </div>
           <div className="flex flex-wrap justify-center gap-3 mt-6">
             {stageData.map((d, i) => (
-              <div key={d.name} className="flex items-center gap-2 bg-white/[0.02] px-3 py-1.5 rounded border border-white/[0.05]">
+              <div key={d.name} className="flex items-center gap-2 bg-card-hover px-3 py-1.5 rounded border border-border">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STAGE_COLORS[i % STAGE_COLORS.length] }} />
-                <span className="text-xs text-gray-400 capitalize">{d.name} <span className="font-semibold text-gray-200 ml-1">{d.value}</span></span>
+                <span className="text-xs text-muted capitalize">{d.name} <span className="font-semibold text-foreground-muted ml-1">{d.value}</span></span>
               </div>
             ))}
           </div>
         </motion.div>
 
         <motion.div variants={itemVariants} className="glass-card p-8">
-          <h3 className="text-lg font-semibold text-white tracking-wide mb-8 text-center">Score Distribution</h3>
+          <h3 className="text-lg font-semibold text-foreground tracking-wide mb-8 text-center">Score Distribution</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -363,9 +363,9 @@ export default function Metrics() {
           </div>
           <div className="flex justify-center gap-4 mt-6">
             {scoreData.map(d => (
-              <div key={d.name} className="flex items-center gap-2 bg-white/[0.02] px-3 py-1.5 rounded border border-white/[0.05]">
+              <div key={d.name} className="flex items-center gap-2 bg-card-hover px-3 py-1.5 rounded border border-border">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[d.name] }} />
-                <span className="text-xs text-gray-400">{d.name} <span className="font-semibold text-gray-200 ml-1">{d.value}</span></span>
+                <span className="text-xs text-muted">{d.name} <span className="font-semibold text-foreground-muted ml-1">{d.value}</span></span>
               </div>
             ))}
           </div>

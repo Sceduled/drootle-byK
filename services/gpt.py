@@ -125,3 +125,14 @@ async def call_gpt_mini(prompt: str) -> str:
     except Exception as e:
         logger.error(f"call_gpt_mini failed: {e}")
         return "UNABLE_TO_PARSE"
+
+async def generate_summary_from_history_text(history_text: str) -> str:
+    prompt = f"""You are an expert sales assistant. Read the following WhatsApp conversation between an AI assistant and a lead.
+Write a highly professional, 2-to-3 sentence executive summary of the lead's situation.
+Focus on their pain points, what they are looking for, their budget (if mentioned), and timeline (if mentioned).
+Do NOT write 'The lead says...' or 'The AI asked...'. Just state the facts directly as a professional CRM report.
+
+Conversation:
+{history_text}
+"""
+    return await call_gpt_mini(prompt)

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, User, LogOut, ToggleRight, Menu, X, MessageSquareCode } from 'lucide-react';
+import { LayoutDashboard, Users, User, LogOut, ToggleRight, Menu, X, MessageSquareCode, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoUrl from '../assets/logo.jpeg';
 
@@ -8,6 +8,30 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Theme toggle logic
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('drootle_theme');
+      if (savedTheme) {
+        return savedTheme === 'dark';
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return true; // Default dark
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('drootle_theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark(!isDark);
 
   const handleLogout = () => {
     localStorage.removeItem('drootle_token');
@@ -25,17 +49,17 @@ export default function Layout({ children }) {
   ];
 
   return (
-    <div className="flex h-screen w-full bg-[#09090b] text-gray-100 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
       
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#09090b]/80 backdrop-blur-md border-b border-white/[0.05] z-50 flex items-center justify-between px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background backdrop-blur-md border-b border-border z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
             <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
+          <h1 className="text-lg font-semibold tracking-wide text-foreground">Kalvron</h1>
         </div>
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-400 hover:text-white">
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-muted hover:text-foreground">
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -48,14 +72,14 @@ export default function Layout({ children }) {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-            className={`w-64 glass-sidebar flex flex-col shrink-0 fixed md:relative z-40 h-full bg-[#09090b] md:bg-transparent ${mobileMenuOpen ? 'pt-16' : ''}`}
+            className={`w-64 glass-sidebar flex flex-col shrink-0 fixed md:relative z-40 h-full bg-background md:bg-transparent ${mobileMenuOpen ? 'pt-16' : ''}`}
           >
             <div className="p-8 hidden md:block">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
                   <img src={logoUrl} alt="Kalvron Logo" className="w-full h-full object-cover" />
                 </div>
-                <h1 className="text-lg font-semibold tracking-wide text-white">Kalvron</h1>
+                <h1 className="text-lg font-semibold tracking-wide text-foreground">Kalvron</h1>
               </div>
             </div>
         
@@ -73,13 +97,13 @@ export default function Layout({ children }) {
                 {isActive && (
                   <motion.div 
                     layoutId="activeTab" 
-                    className="absolute inset-0 bg-white/[0.05] border border-white/[0.05] rounded-xl"
+                    className="absolute inset-0 bg-white/[0.05] border border-border rounded-xl"
                     initial={false}
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
-                <Icon size={18} className={`relative z-10 transition-colors duration-300 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`} />
-                <span className={`relative z-10 font-medium transition-colors duration-300 text-sm ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                <Icon size={18} className={`relative z-10 transition-colors duration-300 ${isActive ? 'text-foreground' : 'text-muted group-hover:text-foreground-muted'}`} />
+                <span className={`relative z-10 font-medium transition-colors duration-300 text-sm ${isActive ? 'text-foreground' : 'text-muted group-hover:text-foreground-muted'}`}>
                   {item.name}
                 </span>
               </Link>
@@ -87,10 +111,17 @@ export default function Layout({ children }) {
           })}
         </nav>
 
-        <div className="p-4 mt-auto border-t border-white/[0.05]">
+        <div className="p-4 mt-auto border-t border-border flex flex-col gap-2">
+          <button 
+            onClick={toggleTheme}
+            className="flex items-center gap-3 px-4 py-3 w-full text-left rounded-xl text-foreground-muted hover:bg-card-hover hover:text-foreground transition-all duration-300"
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            <span className="font-medium text-sm">{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-left rounded-xl text-gray-500 hover:bg-white/[0.03] hover:text-gray-200 transition-all duration-300"
+            className="flex items-center gap-3 px-4 py-3 w-full text-left rounded-xl text-foreground-muted hover:bg-card-hover hover:text-foreground transition-all duration-300"
           >
             <LogOut size={18} />
             <span className="font-medium text-sm">Logout</span>
@@ -101,7 +132,7 @@ export default function Layout({ children }) {
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden relative z-10 bg-[#09090b] pt-16 md:pt-0">
+      <main className="flex-1 overflow-hidden relative z-10 bg-background pt-16 md:pt-0">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

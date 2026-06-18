@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Eye, EyeOff } from 'lucide-react';
 import api from '../lib/api';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#09090b] py-12 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -37,13 +39,13 @@ export default function Login() {
         className="max-w-md w-full space-y-8 glass-card p-10 relative overflow-hidden"
       >
         <div className="mb-8 text-center relative z-10">
-          <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mx-auto mb-6">
-            <svg className="w-6 h-6 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-12 h-12 rounded-xl bg-card-hover border border-border flex items-center justify-center mx-auto mb-6">
+            <svg className="w-6 h-6 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">Lead<span className="text-gray-500 font-normal">AI</span></h2>
-          <p className="mt-3 text-sm text-gray-500">Sign in to your workspace</p>
+          <h2 className="text-3xl font-bold text-foreground tracking-tight">Lead<span className="text-muted font-normal">AI</span></h2>
+          <p className="mt-3 text-sm text-muted">Sign in to your workspace</p>
         </div>
         
         <form className="mt-8 space-y-6 relative z-10" onSubmit={handleLogin}>
@@ -62,21 +64,28 @@ export default function Login() {
               <input
                 type="text"
                 required
-                className="appearance-none rounded-xl relative block w-full px-4 py-3.5 bg-white/[0.02] border border-white/[0.05] placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 sm:text-sm transition-all"
+                className="appearance-none rounded-xl relative block w-full px-4 py-3.5 bg-card-hover border border-border placeholder-gray-500 text-foreground focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 sm:text-sm transition-all"
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
             </div>
-            <div>
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
-                className="appearance-none rounded-xl relative block w-full px-4 py-3.5 bg-white/[0.02] border border-white/[0.05] placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 sm:text-sm transition-all"
+                className="appearance-none rounded-xl relative block w-full px-4 py-3.5 bg-card-hover border border-border placeholder-gray-500 text-foreground focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 sm:text-sm transition-all pr-12"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted hover:text-foreground-muted"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
           </div>
 

@@ -21,7 +21,7 @@ const SCORE_STYLES = {
 };
 
 const STATUS_COLORS = {
-  new: 'bg-white/[0.03] text-gray-300 border border-white/[0.05]',
+  new: 'bg-card-hover text-foreground-muted border border-border',
   qualifying: 'bg-purple-500/10 text-purple-300 border border-purple-500/20',
   stalled: 'bg-orange-500/10 text-orange-300 border border-orange-500/20',
   awaiting_call: 'bg-blue-500/10 text-blue-300 border border-blue-500/20',
@@ -30,7 +30,7 @@ const STATUS_COLORS = {
   cold: 'bg-slate-500/10 text-slate-300 border border-slate-500/20',
   closed: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20',
   upsell: 'bg-yellow-400/10 text-yellow-200 border border-yellow-400/20',
-  archived: 'bg-gray-800/30 text-gray-400 border border-gray-700/50',
+  archived: 'bg-gray-800/30 text-muted border border-border/50',
   lost: 'bg-red-500/10 text-red-300 border border-red-500/20'
 };
 
@@ -39,7 +39,7 @@ const PIPELINE_STAGES = [
   { id: 'qualified', label: 'Qualified', statuses: ['awaiting_call'], color: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/30', text: 'text-purple-400' },
   { id: 'nurturing', label: 'Nurturing', statuses: ['stalled', 'post_call', 'fomo', 'cold'], color: 'from-amber-500/20 to-orange-500/20', border: 'border-amber-500/30', text: 'text-amber-400' },
   { id: 'won', label: 'Closed Won', statuses: ['closed', 'upsell'], color: 'from-emerald-500/20 to-teal-500/20', border: 'border-emerald-500/30', text: 'text-emerald-400' },
-  { id: 'lost', label: 'No Response / Lost', statuses: ['archived', 'lost'], color: 'from-gray-500/20 to-slate-500/20', border: 'border-gray-500/30', text: 'text-gray-400' },
+  { id: 'lost', label: 'No Response / Lost', statuses: ['archived', 'lost'], color: 'from-gray-500/20 to-slate-500/20', border: 'border-gray-500/30', text: 'text-muted' },
 ];
 
 export default function Leads() {
@@ -185,23 +185,23 @@ export default function Leads() {
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/[0.03] border border-white/[0.05] rounded-xl flex items-center justify-center text-gray-200 shadow-sm">
+          <div className="w-10 h-10 bg-card-hover border border-border rounded-xl flex items-center justify-center text-foreground-muted shadow-sm">
             <Inbox size={20} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">CRM Pipeline</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">CRM Pipeline</h1>
           </div>
         </div>
         
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
             <input 
               type="text" 
               placeholder="Search leads..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-64 bg-white/[0.02] border border-white/[0.05] rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20 placeholder-gray-600 transition-all"
+              className="w-full sm:w-64 bg-card-hover border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-white/20 placeholder-gray-600 transition-all"
             />
           </div>
           <button 
@@ -231,12 +231,12 @@ export default function Leads() {
                 className={`flex flex-col justify-center px-6 py-4 rounded-xl border transition-all cursor-pointer min-w-[180px]
                   ${isActive 
                     ? `bg-gradient-to-br ${stage.color} ${stage.border} scale-105 shadow-lg` 
-                    : 'bg-[#09090b]/50 border-white/[0.05] hover:bg-white/[0.02] opacity-60 hover:opacity-100'
+                    : 'bg-background border-border hover:bg-card-hover opacity-60 hover:opacity-100'
                   }
                 `}
               >
-                <span className={`text-3xl font-bold mb-1 ${isActive ? stage.text : 'text-gray-300'}`}>{count}</span>
-                <span className={`text-xs font-semibold uppercase tracking-widest ${isActive ? stage.text : 'text-gray-500'}`}>{stage.label}</span>
+                <span className={`text-3xl font-bold mb-1 ${isActive ? stage.text : 'text-foreground-muted'}`}>{count}</span>
+                <span className={`text-xs font-semibold uppercase tracking-widest ${isActive ? stage.text : 'text-muted'}`}>{stage.label}</span>
               </div>
             );
           })}
@@ -251,13 +251,13 @@ export default function Leads() {
           </div>
         ) : activeLeads.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-gray-400 font-medium text-lg mb-2">No leads found</p>
+            <p className="text-muted font-medium text-lg mb-2">No leads found</p>
             <p className="text-gray-600 text-sm">There are no leads currently in the "{PIPELINE_STAGES.find(s => s.id === activeStageId)?.label}" stage.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-[#09090b]/50 text-gray-500 font-medium border-b border-white/[0.05] uppercase tracking-widest text-[10px]">
+              <thead className="bg-background text-muted font-medium border-b border-border uppercase tracking-widest text-[10px]">
                 <tr>
                   <th className="px-6 py-4">Score</th>
                   <th className="px-6 py-4">Name</th>
@@ -297,13 +297,13 @@ export default function Leads() {
                     <React.Fragment key={lead.id}>
                       <tr 
                         onClick={(e) => toggleRow(e, lead.id)}
-                        className={`hover:bg-white/[0.04] cursor-pointer transition-colors group bg-[#09090b]/20 ${expandedRowId === lead.id ? 'bg-white/[0.03]' : ''}`}
+                        className={`hover:bg-card-hover cursor-pointer transition-colors group bg-background ${expandedRowId === lead.id ? 'bg-card-hover' : ''}`}
                       >
                         <td className="px-6 py-4">
                           {lead.lead_score ? (
                             <div className="flex items-center gap-2">
                               <div className={`w-2 h-2 rounded-full ${lead.lead_score === 'HOT' ? 'bg-red-400' : lead.lead_score === 'WARM' ? 'bg-amber-400' : 'bg-blue-400'}`} />
-                              <span className="font-semibold text-gray-300 text-xs">{lead.lead_score}</span>
+                              <span className="font-semibold text-foreground-muted text-xs">{lead.lead_score}</span>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
@@ -312,27 +312,27 @@ export default function Leads() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 font-semibold text-gray-200 group-hover:text-white transition-colors">{lead.name || '—'}</td>
-                        <td className="px-6 py-4 text-gray-400">{lead.company_name || '—'}</td>
+                        <td className="px-6 py-4 font-semibold text-foreground-muted group-hover:text-foreground transition-colors">{lead.name || '—'}</td>
+                        <td className="px-6 py-4 text-muted">{lead.company_name || '—'}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1.5 rounded text-[10px] font-semibold tracking-widest uppercase ${STATUS_COLORS[lead.conv_status] || 'bg-white/[0.02] text-gray-500'}`}>
+                          <span className={`px-2.5 py-1.5 rounded text-[10px] font-semibold tracking-widest uppercase ${STATUS_COLORS[lead.conv_status] || 'bg-card-hover text-muted'}`}>
                             {lead.conv_status?.replace('_', ' ')}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           {lead.assigned_to ? (
-                            <span className="text-gray-300 text-xs font-medium px-2 py-1 bg-white/[0.05] rounded border border-white/[0.05]">{lead.assigned_to}</span>
+                            <span className="text-foreground-muted text-xs font-medium px-2 py-1 bg-white/[0.05] rounded border border-border">{lead.assigned_to}</span>
                           ) : (
-                            <span className="text-gray-500 text-xs italic">Unassigned</span>
+                            <span className="text-muted text-xs italic">Unassigned</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-gray-500 text-right text-xs font-medium">{moment(lead.created_at).format('MMM D, YYYY')}</td>
+                        <td className="px-6 py-4 text-muted text-right text-xs font-medium">{moment(lead.created_at).format('MMM D, YYYY')}</td>
                       </tr>
                       
                       <AnimatePresence>
                         {expandedRowId === lead.id && (
                           <tr className="bg-white/[0.01]">
-                            <td colSpan="5" className="px-6 py-6 border-b border-white/[0.05]">
+                            <td colSpan="5" className="px-6 py-6 border-b border-border">
                               <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: "auto", opacity: 1 }}
@@ -340,17 +340,17 @@ export default function Leads() {
                                 transition={{ duration: 0.2 }}
                                 className="flex flex-col md:flex-row gap-8 items-start overflow-hidden"
                               >
-                                  <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-xl p-5">
-                                    <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                  <div className="flex-1 bg-card-hover border border-border rounded-xl p-5">
+                                    <h4 className="text-[10px] font-semibold text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                                       <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
                                       Lead Summary
                                     </h4>
-                                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                    <p className="text-foreground-muted text-sm leading-relaxed whitespace-pre-wrap">
                                       {summaryText}
                                     </p>
                                   </div>
                                   
-                                  <div className="w-full md:w-72 shrink-0 bg-[#09090b]/50 p-5 rounded-xl border border-white/[0.05]">
+                                  <div className="w-full md:w-72 shrink-0 bg-background p-5 rounded-xl border border-border">
                                     {!lead.assigned_to ? (
                                       <div className="mb-4">
                                         <button 
@@ -362,9 +362,9 @@ export default function Leads() {
                                       </div>
                                     ) : (
                                       <>
-                                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Log Call Outcome</label>
+                                        <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-3">Log Call Outcome</label>
                                         <select 
-                                          className="w-full bg-white/[0.03] border border-white/[0.1] text-gray-200 text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-3 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white mb-4 hover:bg-white/[0.05] transition-colors outline-none cursor-pointer"
+                                          className="w-full bg-card-hover border border-border text-foreground-muted text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-3 disabled:opacity-50 [&>option]:bg-card [&>option]:text-foreground mb-4 hover:bg-white/[0.05] transition-colors outline-none cursor-pointer"
                                           onChange={(e) => handleOutcomeSelect(e, lead.id)}
                                           value=""
                                           disabled={outcomeUpdating === lead.id || (currentUserRole !== 'admin' && lead.assigned_to !== currentUserUsername)}

@@ -1,28 +1,61 @@
 @import "tailwindcss";
 
+@theme {
+  --color-background: var(--bg-main);
+  --color-card: var(--bg-card);
+  --color-input: var(--bg-input);
+  --color-border: var(--border-color);
+  --color-foreground: var(--text-main);
+  --color-foreground-muted: var(--text-muted);
+  --color-muted: var(--text-faint);
+  --color-card-hover: var(--bg-card-hover);
+}
+
 @layer base {
   :root {
     --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    
+    /* Light Mode (Default) */
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --bg-card-hover: rgba(0, 0, 0, 0.03);
+    --border-color: rgba(0, 0, 0, 0.1);
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --text-faint: #94a3b8;
+  }
+  
+  .dark {
+    --bg-main: #09090b;
+    --bg-card: #0f0f13;
+    --bg-input: #111827;
+    --bg-card-hover: rgba(255, 255, 255, 0.03);
+    --border-color: rgba(255, 255, 255, 0.05);
+    --text-main: #ededed;
+    --text-muted: #d1d5db;
+    --text-faint: #9ca3af;
   }
   
   body {
     font-family: var(--font-sans);
-    background-color: #09090b; /* Very dark, almost black */
-    color: #ededed;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/[0.02] border border-white/[0.05] rounded-xl;
+    @apply bg-card-hover border border-border rounded-xl;
   }
   
   .glass-card {
-    @apply bg-[#0f0f13] border border-white/[0.05] shadow-[0_4px_24px_rgba(0,0,0,0.4)] rounded-2xl;
+    @apply bg-card border border-border shadow-xl rounded-2xl;
   }
   
   .glass-sidebar {
-    @apply bg-[#09090b] border-r border-white/[0.05];
+    @apply bg-background border-r border-border;
   }
   
   .text-glow {

@@ -13,7 +13,7 @@ import csv
 
 from core.database import get_db
 from core.models import SimulationSession, SimulationMessage, Lead
-from services.gpt import process_message
+from services.gpt import process_message, generate_summary_from_history_text
 from client_config import SEQUENCE_MESSAGES
 
 router = APIRouter()
@@ -39,9 +39,10 @@ async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession
     await db.commit()
     
     return {
-        "session_id": str(session.id),
-        "name": session.name,
-        "message": opening_message
+        "session_id": str(session.id), 
+        "message": opening_message,
+        "lead_score": session.lead_score,
+        "ai_summary": session.ai_summary
     }
 
 @router.get("/history/{session_id}")
@@ -120,14 +121,32 @@ async def send_simulation_message(
     
     # Save assistant reply
     ai_msg = SimulationMessage(
-        session_id=sid,
+        session_id=session.id,
         role="assistant",
         content=reply
     )
     db.add(ai_msg)
     await db.commit()
+
+    # Generate summary from history
+    result = await db.execute(
+        select(SimulationMessage)
+        .where(SimulationMessage.session_id == session.id)
+        .order_by(SimulationMessage.created_at)
+    )
+    all_msgs = result.scalars().all()
+    history_text = "\n".join([f"{msg.role}: {msg.content}" for msg in all_msgs])
+    summary = await generate_summary_from_history_text(history_text)
     
-    return {"reply": reply}
+    if summary and summary != "UNABLE_TO_PARSE":
+        session.ai_summary = summary
+    
+    if extraction and "lead_score" in extraction:
+        session.lead_score = extraction["lead_score"]
+
+    await db.commit()
+    
+    return {"reply": reply, "lead_score": session.lead_score, "ai_summary": session.ai_summary}
 
 @router.get("/export")
 async def export_simulations(db: AsyncSession = Depends(get_db)):

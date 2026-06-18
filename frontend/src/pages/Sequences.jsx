@@ -76,15 +76,15 @@ export default function Sequences() {
       className="p-8 max-w-4xl mx-auto"
     >
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 bg-white/[0.03] border border-white/[0.05] rounded-xl flex items-center justify-center text-gray-200">
+        <div className="w-10 h-10 bg-card-hover border border-border rounded-xl flex items-center justify-center text-foreground-muted">
           <ToggleRight size={20} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Sequences</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Sequences</h1>
         </div>
       </div>
       
-      <p className="text-gray-500 mb-10 max-w-2xl text-sm leading-relaxed">
+      <p className="text-muted mb-10 max-w-2xl text-sm leading-relaxed">
         Manage the AI's autonomous sequences below. Toggling a sequence immediately updates the AI's behavior engine.
       </p>
 
@@ -100,12 +100,12 @@ export default function Sequences() {
                 isLocked 
                   ? 'bg-white/[0.01] border-white/[0.02]' 
                   : seq.enabled 
-                    ? 'border-white/[0.1]' 
+                    ? 'border-border' 
                     : 'bg-white/[0.01] opacity-50 hover:opacity-100'
               }`}
             >
               <div 
-                className={`p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 ${seq.templates?.length > 0 ? 'cursor-pointer hover:bg-white/[0.02] transition-colors rounded-t-xl' : ''}`}
+                className={`p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 ${seq.templates?.length > 0 ? 'cursor-pointer hover:bg-card-hover transition-colors rounded-t-xl' : ''}`}
                 onClick={() => {
                   if (seq.templates?.length > 0) {
                     setExpandedSeq(expandedSeq === seq.sequence_number ? null : seq.sequence_number);
@@ -115,11 +115,11 @@ export default function Sequences() {
                 <div>
                   <div className="flex items-center gap-3 mb-1">
                     <span className={`px-2 py-0.5 rounded text-[11px] font-semibold tracking-widest uppercase ${
-                      seq.enabled && !isLocked ? 'bg-white/10 text-white' : 'bg-white/[0.02] text-gray-500'
+                      seq.enabled && !isLocked ? 'bg-white/10 text-foreground' : 'bg-card-hover text-muted'
                     }`}>
                       SEQ {seq.sequence_number}
                     </span>
-                    <h3 className={`text-base font-semibold ${seq.enabled || isLocked ? 'text-white' : 'text-gray-400'}`}>
+                    <h3 className={`text-base font-semibold ${seq.enabled || isLocked ? 'text-foreground' : 'text-muted'}`}>
                       {seq.sequence_name}
                     </h3>
                     {isLocked && (
@@ -128,11 +128,11 @@ export default function Sequences() {
                       </div>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-muted mt-1">
                     {SEQUENCE_DESCRIPTIONS[seq.sequence_number] || "System sequence"}
                   </p>
                   {isLocked && (
-                    <p className="text-[11px] text-gray-400 mt-2 font-semibold tracking-widest uppercase">REQUIRED SYSTEM LOOP</p>
+                    <p className="text-[11px] text-muted mt-2 font-semibold tracking-widest uppercase">REQUIRED SYSTEM LOOP</p>
                   )}
                 </div>
                 
@@ -148,14 +148,14 @@ export default function Sequences() {
                       isLocked ? 'bg-transparent text-gray-600 cursor-not-allowed border border-white/[0.02]' :
                       seq.enabled 
                         ? 'bg-white text-black hover:bg-gray-200' 
-                        : 'bg-transparent text-gray-400 border border-white/[0.1] hover:bg-white/[0.05]'
+                        : 'bg-transparent text-muted border border-border hover:bg-white/[0.05]'
                     }`}
                   >
                     <Power size={14} strokeWidth={seq.enabled && !isLocked ? 2.5 : 2} />
                     {seq.enabled ? 'ACTIVE' : 'INACTIVE'}
                   </button>
                   {seq.templates?.length > 0 && (
-                    <div className="text-gray-500">
+                    <div className="text-muted">
                       {expandedSeq === seq.sequence_number ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
                   )}
@@ -169,13 +169,13 @@ export default function Sequences() {
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="overflow-hidden border-t border-white/[0.05]"
+                    className="overflow-hidden border-t border-border"
                   >
                     <div className="p-6 bg-white/[0.01] space-y-4">
                       {seq.templates.map((tpl, i) => (
-                        <div key={i} className="bg-[#09090b] border border-white/[0.05] rounded-lg p-4">
-                          <p className="text-xs text-gray-500 font-mono mb-2 uppercase tracking-wider">{tpl.key}</p>
-                          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{tpl.content}</p>
+                        <div key={i} className="bg-background border border-border rounded-lg p-4">
+                          <p className="text-xs text-muted font-mono mb-2 uppercase tracking-wider">{tpl.key}</p>
+                          <p className="text-sm text-foreground-muted whitespace-pre-wrap leading-relaxed">{tpl.content}</p>
                         </div>
                       ))}
                     </div>

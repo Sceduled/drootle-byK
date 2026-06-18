@@ -123,7 +123,7 @@ export default function LeadDetail() {
     }
   };
 
-  if (!data) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (!data) return <div className="p-8 text-center text-muted">Loading...</div>;
 
   const { lead, conversations } = data;
 
@@ -132,13 +132,13 @@ export default function LeadDetail() {
       
       {showOverrideModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="glass-card max-w-md w-full p-6 border border-white/[0.1]">
-            <h3 className="text-lg font-semibold text-white mb-4">Override Stage</h3>
+          <div className="glass-card max-w-md w-full p-6 border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Override Stage</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">New Stage</label>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-widest mb-2">New Stage</label>
                 <select 
-                  className="w-full bg-white/[0.02] border border-white/[0.05] rounded-lg p-2.5 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-white/20 [&>option]:bg-[#0f0f13] [&>option]:text-white"
+                  className="w-full bg-card-hover border border-border rounded-lg p-2.5 text-sm text-foreground-muted focus:outline-none focus:ring-1 focus:ring-white/20 [&>option]:bg-card [&>option]:text-foreground"
                   value={overrideStatus}
                   onChange={e => setOverrideStatus(e.target.value)}
                 >
@@ -157,9 +157,9 @@ export default function LeadDetail() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Reason</label>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-widest mb-2">Reason</label>
                 <textarea 
-                  className="w-full bg-white/[0.02] border border-white/[0.05] rounded-lg p-2.5 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-white/20 placeholder-gray-600"
+                  className="w-full bg-card-hover border border-border rounded-lg p-2.5 text-sm text-foreground-muted focus:outline-none focus:ring-1 focus:ring-white/20 placeholder-gray-600"
                   rows="3"
                   value={overrideReason}
                   onChange={e => setOverrideReason(e.target.value)}
@@ -169,7 +169,7 @@ export default function LeadDetail() {
               <div className="flex gap-3 justify-end mt-6">
                 <button 
                   onClick={() => setShowOverrideModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-400 bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-muted bg-card-hover hover:bg-white/[0.05] border border-border rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -211,39 +211,39 @@ export default function LeadDetail() {
         </div>
       )}
 
-      <div className="w-full md:w-96 border-b md:border-b-0 md:border-r border-white/[0.05] glass-sidebar flex flex-col shrink-0">
-        <div className="p-6 border-b border-white/[0.05]">
+      <div className="w-full md:w-96 border-b md:border-b-0 md:border-r border-border glass-sidebar flex flex-col shrink-0">
+        <div className="p-6 border-b border-border">
           <button 
             onClick={() => navigate('/leads')}
-            className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors mb-6 text-sm font-medium"
+            className="flex items-center gap-2 text-muted hover:text-foreground transition-colors mb-6 text-sm font-medium"
           >
             <ArrowLeft size={16} /> Back to Leads
           </button>
           
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold text-white">{lead.name || 'Unknown Name'}</h2>
-              <p className="text-gray-400 flex items-center gap-2 mt-1 text-sm">
+              <h2 className="text-xl font-bold text-foreground">{lead.name || 'Unknown Name'}</h2>
+              <p className="text-muted flex items-center gap-2 mt-1 text-sm">
                 <Phone size={14} /> {lead.phone}
               </p>
             </div>
             {lead.lead_score && (
-              <span className="bg-white/[0.03] px-3 py-1.5 rounded text-[11px] font-semibold tracking-widest uppercase border border-white/[0.05] text-white">
+              <span className="bg-card-hover px-3 py-1.5 rounded text-[11px] font-semibold tracking-widest uppercase border border-border text-foreground">
                 {scoreEmoji[lead.lead_score]} {lead.lead_score}
               </span>
             )}
           </div>
           
           <div className="flex gap-2 mb-6">
-            <span className="inline-block bg-white/[0.03] text-gray-300 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-white/[0.05]">
+            <span className="inline-block bg-card-hover text-foreground-muted px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-border">
               STATUS: {lead.conv_status}
             </span>
             {lead.assigned_to ? (
-              <span className="inline-block bg-white/[0.03] text-gray-300 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-white/[0.05]">
+              <span className="inline-block bg-card-hover text-foreground-muted px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-border">
                 {lead.assigned_to}
               </span>
             ) : (
-              <span className="inline-block bg-white/[0.02] text-gray-500 px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-white/[0.05] italic">
+              <span className="inline-block bg-card-hover text-muted px-2.5 py-1 rounded text-[11px] uppercase tracking-widest font-semibold border border-border italic">
                 Unassigned
               </span>
             )}
@@ -260,9 +260,9 @@ export default function LeadDetail() {
             )}
             {lead.conv_status === 'awaiting_call' && (
               <div className="mb-2">
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Log Call Outcome</label>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-widest mb-2">Log Call Outcome</label>
                 <select 
-                  className="w-full bg-white/[0.02] border border-white/[0.05] text-white text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-2.5 disabled:opacity-50 [&>option]:bg-[#0f0f13] [&>option]:text-white"
+                  className="w-full bg-card-hover border border-border text-foreground text-sm rounded-lg focus:ring-1 focus:ring-white/20 block p-2.5 disabled:opacity-50 [&>option]:bg-card [&>option]:text-foreground"
                   onChange={handleOutcomeSelect}
                   value={outcomeSelection}
                   disabled={loadingAction === "outcome" || (currentUserRole !== 'admin' && lead.assigned_to !== currentUserUsername)}
@@ -309,7 +309,7 @@ export default function LeadDetail() {
               <button 
                 onClick={() => setShowOverrideModal(true)}
                 disabled={currentUserRole !== 'admin' && lead.assigned_to !== currentUserUsername}
-                className="w-full bg-white/[0.03] hover:bg-white/[0.05] text-gray-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm border border-white/[0.05] disabled:opacity-50"
+                className="w-full bg-card-hover hover:bg-white/[0.05] text-foreground-muted font-medium py-2 px-4 rounded-lg transition-colors text-sm border border-border disabled:opacity-50"
               >
                 Override Stage
               </button>
@@ -319,49 +319,49 @@ export default function LeadDetail() {
 
         <div className="p-6 overflow-y-auto space-y-8 flex-1">
           <div>
-            <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Company Details</h3>
+            <h3 className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-4">Company Details</h3>
             <div className="space-y-4">
-              <div className="flex gap-3 text-sm items-center"><Building2 size={16} className="text-gray-500" /> <span className="text-gray-300">{lead.company_name || '—'}</span></div>
-              <div className="flex gap-3 text-sm items-center"><Target size={16} className="text-gray-500" /> <span className="text-gray-300 capitalize">{lead.industry?.replace('_', ' ') || '—'}</span></div>
-              <div className="flex gap-3 text-sm items-center"><DollarSign size={16} className="text-gray-500" /> <span className="text-gray-300">{lead.monthly_ad_budget?.replace('_', ' ') || '—'}</span></div>
+              <div className="flex gap-3 text-sm items-center"><Building2 size={16} className="text-muted" /> <span className="text-foreground-muted">{lead.company_name || '—'}</span></div>
+              <div className="flex gap-3 text-sm items-center"><Target size={16} className="text-muted" /> <span className="text-foreground-muted capitalize">{lead.industry?.replace('_', ' ') || '—'}</span></div>
+              <div className="flex gap-3 text-sm items-center"><DollarSign size={16} className="text-muted" /> <span className="text-foreground-muted">{lead.monthly_ad_budget?.replace('_', ' ') || '—'}</span></div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Qualification Info</h3>
+            <h3 className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-4">Qualification Info</h3>
             <div className="space-y-4 text-sm">
               <div>
-                <p className="text-gray-500 mb-1 text-xs">Pain Point</p>
-                <p className="text-gray-300 bg-white/[0.02] p-3 rounded-lg border border-white/[0.05]">{lead.pain_point || '—'}</p>
+                <p className="text-muted mb-1 text-xs">Pain Point</p>
+                <p className="text-foreground-muted bg-card-hover p-3 rounded-lg border border-border">{lead.pain_point || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 mb-1 text-xs">Target Markets</p>
-                <p className="text-gray-300">{lead.target_markets?.join(', ') || '—'}</p>
+                <p className="text-muted mb-1 text-xs">Target Markets</p>
+                <p className="text-foreground-muted">{lead.target_markets?.join(', ') || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 mb-1 text-xs">Urgency</p>
-                <p className="text-gray-300">{lead.urgency || '—'}</p>
+                <p className="text-muted mb-1 text-xs">Urgency</p>
+                <p className="text-foreground-muted">{lead.urgency || '—'}</p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Logistics</h3>
+            <h3 className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-4">Logistics</h3>
             <div className="flex gap-3 text-sm items-start">
-              <Clock size={16} className="text-gray-500 mt-0.5" /> 
+              <Clock size={16} className="text-muted mt-0.5" /> 
               <div>
-                <p className="text-gray-500 mb-1 text-xs">Preferred Call Time</p>
-                <p className="text-gray-300">{lead.preferred_call_time || '—'}</p>
+                <p className="text-muted mb-1 text-xs">Preferred Call Time</p>
+                <p className="text-foreground-muted">{lead.preferred_call_time || '—'}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-[#09090b] relative">
-        <div className="p-6 border-b border-white/[0.05] bg-transparent relative z-10 backdrop-blur-sm">
-          <h2 className="text-lg font-semibold text-white tracking-wide">Conversation History</h2>
-          <p className="text-sm text-gray-500">Live chat view</p>
+      <div className="flex-1 flex flex-col bg-background relative">
+        <div className="p-6 border-b border-border bg-transparent relative z-10 backdrop-blur-sm">
+          <h2 className="text-lg font-semibold text-foreground tracking-wide">Conversation History</h2>
+          <p className="text-sm text-muted">Live chat view</p>
         </div>
         
         <div className="flex-1 overflow-y-auto p-6 space-y-6 relative z-10">
@@ -373,7 +373,7 @@ export default function LeadDetail() {
             if (isSystem) {
               return (
                 <div key={idx} className="flex justify-center">
-                  <div className="bg-white/[0.02] border border-white/[0.05] text-gray-400 text-[11px] px-4 py-2 rounded-lg max-w-lg text-center font-mono whitespace-pre-wrap">
+                  <div className="bg-card-hover border border-border text-muted text-[11px] px-4 py-2 rounded-lg max-w-lg text-center font-mono whitespace-pre-wrap">
                     {msg.content}
                     <div className="mt-1 opacity-50">{moment(msg.created_at).format('MMM D, h:mm A')}</div>
                   </div>
@@ -383,9 +383,9 @@ export default function LeadDetail() {
 
             return (
               <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-xl rounded-2xl px-5 py-3 ${isUser ? 'bg-blue-600 text-white rounded-br-none' : 'bg-[#18181b] border border-white/[0.05] text-gray-200 rounded-bl-none shadow-sm'}`}>
+                <div className={`max-w-xl rounded-2xl px-5 py-3 ${isUser ? 'bg-blue-600 text-white rounded-br-none' : 'bg-card border border-border text-foreground-muted rounded-bl-none shadow-sm'}`}>
                   <div className="whitespace-pre-wrap text-[14px] leading-relaxed">{msg.content}</div>
-                  <div className={`text-[10px] mt-2 font-medium tracking-wide ${isUser ? 'text-blue-200' : 'text-gray-500'}`}>
+                  <div className={`text-[10px] mt-2 font-medium tracking-wide ${isUser ? 'text-blue-200' : 'text-muted'}`}>
                     {moment(msg.created_at).format('h:mm A')}
                   </div>
                 </div>
@@ -397,8 +397,8 @@ export default function LeadDetail() {
 
         {/* Stage History */}
         <div className="glass-card m-6 overflow-hidden relative z-10">
-          <div className="border-b border-white/[0.05] px-6 py-4 bg-white/[0.01] flex items-center gap-2">
-            <h3 className="font-semibold text-white tracking-wide">Stage History</h3>
+          <div className="border-b border-border px-6 py-4 bg-white/[0.01] flex items-center gap-2">
+            <h3 className="font-semibold text-foreground tracking-wide">Stage History</h3>
           </div>
           <div className="p-6">
             <div className="space-y-6">
@@ -411,22 +411,22 @@ export default function LeadDetail() {
                   
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-semibold text-gray-200 capitalize">
+                      <span className="text-sm font-semibold text-foreground-muted capitalize">
                         {item.from_status ? item.from_status.replace('_', ' ') : 'None'} 
-                        <span className="text-gray-500 mx-1">→</span>
-                        <span className="text-white">{item.to_status.replace('_', ' ')}</span>
+                        <span className="text-muted mx-1">→</span>
+                        <span className="text-foreground">{item.to_status.replace('_', ' ')}</span>
                       </span>
-                      <span className="text-[10px] bg-white/[0.05] border border-white/[0.05] text-gray-400 px-2 py-0.5 rounded uppercase tracking-widest font-semibold">
+                      <span className="text-[10px] bg-white/[0.05] border border-border text-muted px-2 py-0.5 rounded uppercase tracking-widest font-semibold">
                         {item.triggered_by}
                       </span>
                     </div>
-                    {item.notes && <p className="text-sm text-gray-400 mb-1">{item.notes}</p>}
-                    <p className="text-xs text-gray-500">{moment(item.created_at).format('MMM D, YYYY h:mm A')}</p>
+                    {item.notes && <p className="text-sm text-muted mb-1">{item.notes}</p>}
+                    <p className="text-xs text-muted">{moment(item.created_at).format('MMM D, YYYY h:mm A')}</p>
                   </div>
                 </div>
               ))}
               {history.length === 0 && (
-                <p className="text-sm text-gray-500">No stage history recorded yet.</p>
+                <p className="text-sm text-muted">No stage history recorded yet.</p>
               )}
             </div>
           </div>

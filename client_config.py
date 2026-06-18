@@ -107,10 +107,10 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 1: FIRST TOUCH ──────────────────────
     "first_touch": (
-        "Hi {name}!  I'm Priya from Prestige Raintree Park "
+        "Hi {name}! I'm Priya from Prestige Raintree Park "
         "in Whitefield. You had enquired about our project - "
-        "happy to help! Are you looking for a home to move in "
-        "or an investment? "
+        "happy to help! Are you looking for a home for self use "
+        "or an investment?"
     ),
 
     # ── SEQUENCE 2: QUALIFICATION NUDGE ──────────────

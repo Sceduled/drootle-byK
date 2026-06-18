@@ -58,15 +58,15 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (loading) return <div className="p-8 text-center text-muted">Loading...</div>;
   if (!profile) return <div className="p-8 text-center text-red-500">Failed to load profile.</div>;
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Company Profile</h1>
-          <p className="text-gray-400 mt-1">Your brand and AI agent details</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-wide">Company Profile</h1>
+          <p className="text-muted mt-1">Your brand and AI agent details</p>
         </div>
       </div>
 
@@ -79,11 +79,11 @@ export default function Profile() {
         >
           <div className="flex items-center gap-4 mb-6">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
-              <Building2 size={24} className="text-gray-400" />
+              <Building2 size={24} className="text-muted" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">Brand Name</h3>
-              <p className="text-lg font-medium text-white">{profile.client_brand}</p>
+              <h3 className="text-sm font-semibold text-muted uppercase tracking-widest">Brand Name</h3>
+              <p className="text-lg font-medium text-foreground">{profile.client_brand}</p>
             </div>
           </div>
         </motion.div>
@@ -96,11 +96,11 @@ export default function Profile() {
         >
           <div className="flex items-center gap-4 mb-6">
             <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
-              <User size={24} className="text-gray-400" />
+              <User size={24} className="text-muted" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">Owner</h3>
-              <p className="text-lg font-medium text-white">{profile.owner_name}</p>
+              <h3 className="text-sm font-semibold text-muted uppercase tracking-widest">Owner</h3>
+              <p className="text-lg font-medium text-foreground">{profile.owner_name}</p>
             </div>
           </div>
         </motion.div>
@@ -116,11 +116,11 @@ export default function Profile() {
               <img src={mayaAvatarUrl} alt="Maya Avatar" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">AI Agent Persona</h3>
-              <p className="text-lg font-medium text-white">{profile.agent_name}</p>
+              <h3 className="text-sm font-semibold text-muted uppercase tracking-widest">AI Agent Persona</h3>
+              <p className="text-lg font-medium text-foreground">{profile.agent_name}</p>
             </div>
           </div>
-          <p className="text-sm text-gray-400 leading-relaxed max-w-2xl">
+          <p className="text-sm text-muted leading-relaxed max-w-2xl">
             {profile.agent_name} is your AI sales assistant deployed to qualify leads. She operates based on the qualification criteria and sequence settings defined in your configuration.
           </p>
         </motion.div>
@@ -133,11 +133,11 @@ export default function Profile() {
           transition={{ duration: 0.3, delay: 0.3 }}
           className="glass-card p-6 mt-8"
         >
-          <h2 className="text-lg font-semibold text-white mb-6 uppercase tracking-widest">Sales Team</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-6 uppercase tracking-widest">Sales Team</h2>
           
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Add Sales Rep</h3>
+              <h3 className="text-sm font-semibold text-muted uppercase tracking-widest mb-4">Add Sales Rep</h3>
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div>
                   <input
@@ -146,7 +146,7 @@ export default function Profile() {
                     placeholder="Username"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
-                    className="w-full bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                    className="w-full bg-card-hover border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-white/20"
                   />
                 </div>
                 <div>
@@ -156,7 +156,7 @@ export default function Profile() {
                     placeholder="Password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                    className="w-full bg-card-hover border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-white/20"
                   />
                 </div>
                 {userError && <p className="text-red-400 text-xs font-semibold">{userError}</p>}
@@ -171,20 +171,20 @@ export default function Profile() {
             </div>
             
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Current Team</h3>
+              <h3 className="text-sm font-semibold text-muted uppercase tracking-widest mb-4">Current Team</h3>
               <div className="space-y-3">
                 {users.map(u => (
-                  <div key={u.id} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 flex items-center justify-between">
+                  <div key={u.id} className="bg-card-hover border border-border rounded-xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                        <User size={14} className="text-gray-400" />
+                        <User size={14} className="text-muted" />
                       </div>
-                      <span className="font-medium text-white text-sm">{u.username}</span>
+                      <span className="font-medium text-foreground text-sm">{u.username}</span>
                     </div>
-                    <span className="text-xs uppercase tracking-widest text-gray-500 font-semibold">{u.role.replace('_', ' ')}</span>
+                    <span className="text-xs uppercase tracking-widest text-muted font-semibold">{u.role.replace('_', ' ')}</span>
                   </div>
                 ))}
-                {users.length === 0 && <p className="text-gray-500 text-sm">No users found.</p>}
+                {users.length === 0 && <p className="text-muted text-sm">No users found.</p>}
               </div>
             </div>
           </div>

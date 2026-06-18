@@ -48,15 +48,15 @@ export default function Modal({
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#0f0f13] border border-white/[0.08] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-semibold text-white tracking-tight">{title}</h3>
+                  <h3 className="text-xl font-semibold text-foreground tracking-tight">{title}</h3>
                   {type !== 'alert' && (
                     <button
                       onClick={onClose}
-                      className="text-gray-400 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.05] p-1.5 rounded-lg"
+                      className="text-muted hover:text-foreground transition-colors bg-card-hover hover:bg-white/[0.05] p-1.5 rounded-lg"
                     >
                       <X size={18} />
                     </button>
@@ -64,7 +64,7 @@ export default function Modal({
                 </div>
                 
                 {description && (
-                  <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                  <p className="text-muted text-sm leading-relaxed mb-6">
                     {description}
                   </p>
                 )}
@@ -80,7 +80,7 @@ export default function Modal({
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') onConfirm();
                       }}
-                      className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all placeholder-gray-600"
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all placeholder-gray-600"
                     />
                   </div>
                 )}
@@ -91,7 +91,7 @@ export default function Modal({
                   {type !== 'alert' && (
                     <button
                       onClick={onClose}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] transition-colors"
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-foreground-muted hover:text-foreground bg-card-hover hover:bg-white/[0.08] transition-colors"
                     >
                       {cancelText}
                     </button>
