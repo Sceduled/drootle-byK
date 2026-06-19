@@ -47,6 +47,8 @@ class Lead(Base):
     source_ad = Column(Text, nullable=True)
     sheet_row_index = Column(Integer, nullable=True)
     assigned_to = Column(Text, index=True, nullable=True)
+    project_key = Column(Text, nullable=True, index=True)
+    needs_project_assignment = Column(Boolean, default=False, nullable=False)
 
     # Reminders
     call_booked_at = Column(DateTime(timezone=True), nullable=True)
@@ -179,4 +181,19 @@ class CampaignContext(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     context_key = Column(String(100), nullable=False, unique=True)
     context_value = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_key = Column(Text, nullable=False, unique=True, index=True)
+    project_name = Column(Text, nullable=False)
+    area = Column(Text, nullable=False)
+    property_type = Column(Text, nullable=False)
+    bhk_or_size = Column(Text, nullable=False)
+    price_range = Column(Text, nullable=False)
+    key_features = Column(Text, nullable=True)
+    active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

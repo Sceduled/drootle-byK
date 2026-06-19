@@ -27,6 +27,15 @@ Phone: {lead.phone}""".strip()
     await _send_to_sales_team(str(lead.id), message, "sales_alert")
     logger.info(f"sales team notified for lead {lead.id}")
 
+async def notify_sales_unmatched_project(lead) -> None:
+    message = (
+        f"⚠ Could not auto-match project for this lead — please assign manually in dashboard.\n"
+        f"Name: {lead.name or 'Unknown'}\n"
+        f"Phone: {lead.phone}\n"
+        f"Ad Source: {lead.source_ad or 'Unknown'}"
+    )
+    await _send_to_sales_team(str(lead.id), message, "unmatched_project_alert")
+
 async def notify_sales_stalled(lead_id: str) -> None:
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Lead).where(Lead.id == lead_id))

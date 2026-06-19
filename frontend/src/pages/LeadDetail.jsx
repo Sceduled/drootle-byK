@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Building2, Target, DollarSign, Clock } from 'lucide-react';
+import { ArrowLeft, Phone, Building2, Target, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
 import moment from 'moment';
 
@@ -23,6 +23,7 @@ export default function LeadDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [history, setHistory] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loadingAction, setLoadingAction] = useState(null);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [overrideStatus, setOverrideStatus] = useState("");
@@ -48,8 +49,18 @@ export default function LeadDetail() {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const res = await api.get('/dashboard/projects');
+      setProjects(res.data.filter(p => p.active));
+    } catch (e) {
+      console.error("Failed to load projects", e);
+    }
+  };
+
   useEffect(() => {
     fetchLead();
+    fetchProjects();
     const interval = setInterval(fetchLead, 10000);
     return () => clearInterval(interval);
   }, [id]);
@@ -128,7 +139,36 @@ export default function LeadDetail() {
   const { lead, conversations } = data;
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+    <div className="flex flex-col w-full">
+      {lead.needs_project_assignment && (
+        <div className="w-full bg-yellow-500/10 border-b border-yellow-500/20 px-8 py-4 flex items-center justify-between z-40">
+          <div className="flex items-center gap-3 text-yellow-500">
+            <AlertCircle size={20} />
+            <p className="text-sm font-medium">⚠ Could not auto-match this lead to a project. Please assign manually below.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <select 
+              className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-yellow-500"
+              onChange={async (e) => {
+                if (!e.target.value) return;
+                try {
+                  await api.patch(`/dashboard/leads/${id}/assign-project`, { project_key: e.target.value });
+                  await fetchLead();
+                } catch (err) {
+                  alert("Failed to assign project");
+                }
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>Select a project...</option>
+              {projects.map(p => (
+                <option key={p.project_key} value={p.project_key}>{p.project_name} ({p.area})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+    <div className="p-4 md:p-8 max-w-7xl mx-auto flex flex-col md:flex-row gap-6 w-full">
       
       {showOverrideModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
@@ -433,6 +473,7 @@ export default function LeadDetail() {
         </div>
 
       </div>
+    </div>
     </div>
   );
 }

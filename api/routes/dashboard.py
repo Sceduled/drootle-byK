@@ -9,7 +9,7 @@ from sqlalchemy import select, func, desc, case
 from typing import Optional
 
 from core.database import get_db
-from core.models import Lead, Conversation, StageHistory, SequenceConfig, NotificationLog, SequenceTiming, CampaignContext
+from core.models import Lead, Conversation, StageHistory, SequenceConfig, NotificationLog, SequenceTiming, CampaignContext, Project
 from api.routes.auth import get_current_user
 from api.routes.webhooks import get_arq_pool
 from core.config import settings
@@ -490,7 +490,94 @@ async def patch_sequence_timing(
                 display_order=0
             ))
     await db.commit()
-    return {"success": True, "updated": len(payload)}
+    return {"message": "Campaign context updated successfully"}
+
+# --- Project Management Endpoints ---
+
+class ProjectCreatePayload(BaseModel):
+    project_key: str
+    project_name: str
+    area: str
+    property_type: str
+    bhk_or_size: str
+    price_range: str
+    key_features: Optional[str] = None
+
+class ProjectUpdatePayload(BaseModel):
+    project_name: Optional[str] = None
+    area: Optional[str] = None
+    property_type: Optional[str] = None
+    bhk_or_size: Optional[str] = None
+    price_range: Optional[str] = None
+    key_features: Optional[str] = None
+    active: Optional[bool] = None
+
+@router.get("/projects")
+async def get_projects(db: AsyncSession = Depends(get_db)):
+    from core.models import Project
+    result = await db.execute(select(Project).order_by(Project.created_at.desc()))
+    return result.scalars().all()
+
+@router.post("/projects")
+async def create_project(payload: ProjectCreatePayload, db: AsyncSession = Depends(get_db)):
+    from core.models import Project
+    from utils.project_matcher import normalize
+    normalized_key = normalize(payload.project_key)
+    if not normalized_key:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid project key")
+
+    result = await db.execute(select(Project).where(Project.project_key == normalized_key))
+    if result.scalars().first():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Project key already exists")
+
+    new_proj = Project(
+        project_key=normalized_key,
+        project_name=payload.project_name,
+        area=payload.area,
+        property_type=payload.property_type,
+        bhk_or_size=payload.bhk_or_size,
+        price_range=payload.price_range,
+        key_features=payload.key_features
+    )
+    db.add(new_proj)
+    await db.commit()
+    await db.refresh(new_proj)
+    return new_proj
+
+@router.patch("/projects/{project_key}")
+async def update_project(project_key: str, payload: ProjectUpdatePayload, db: AsyncSession = Depends(get_db)):
+    from core.models import Project
+    result = await db.execute(select(Project).where(Project.project_key == project_key))
+    project = result.scalars().first()
+    if not project:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    update_data = payload.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(project, key, value)
+
+    await db.commit()
+    await db.refresh(project)
+    return project
+
+class AssignProjectPayload(BaseModel):
+    project_key: str
+
+@router.patch("/leads/{lead_id}/assign-project")
+async def assign_lead_project(lead_id: str, payload: AssignProjectPayload, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalars().first()
+    if not lead:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
+    lead.project_key = payload.project_key
+    lead.needs_project_assignment = False
+    await db.commit()
+    return {"message": "Project assigned successfully"}
 
 @router.get("/profile")
 async def get_profile():

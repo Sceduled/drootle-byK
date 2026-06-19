@@ -19,6 +19,8 @@ from core.redis import get_redis
 from utils.phone import normalize_phone
 from services.gpt import call_gpt_mini
 from services.admin_reporter import push_event
+from utils.project_matcher import match_project
+from services.notifications import notify_sales_unmatched_project
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -67,19 +69,34 @@ async def new_lead(
         logger.info(f"Existing lead found, resuming. lead_id: {lead.id}")
     else:
         is_new = True
+        
+        project_key = await match_project(payload.source_ad, db)
+        needs_assignment = project_key == "unknown"
+
         lead = Lead(
             name=payload.name,
             phone=norm_phone,
             email=payload.email,
             company_name=payload.company,
             source_ad=payload.source_ad,
-            sheet_row_index=payload.sheet_row
+            sheet_row_index=payload.sheet_row,
+            project_key=project_key if not needs_assignment else None,
+            needs_project_assignment=needs_assignment
         )
         db.add(lead)
         await db.commit()
         await db.refresh(lead)
 
-        await push_event("lead_created", str(lead.id), {"source": "webhook"})
+        alert_msg = "⚠ Could not auto-match project for this lead — please assign manually in dashboard." if needs_assignment else None
+
+        await push_event("lead_created", str(lead.id), {
+            "source": "webhook", 
+            "needs_project_assignment": needs_assignment,
+            "alert": alert_msg
+        })
+        
+        if needs_assignment:
+            await notify_sales_unmatched_project(lead)
 
         logger.info(f"New lead created. lead_id: {lead.id}")
 
