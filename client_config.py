@@ -177,7 +177,7 @@ WARM — budget mismatch but flexible, or timeline 1-3 months, or some uncertain
 COLD — no clear budget, timeline beyond 3 months or just exploring, vague answers throughout
 
 Generate a one-line internal summary after qualification completes (not shown to lead):
-"{name} - {area} - {size} - {budget} - {timeline} - {purpose} - Score: {score}"
+"[Name] - [Area] - [Size] - [Budget] - [Timeline] - [Purpose] - Score: [Score]"
 
 This summary should be available for the sales team alert message.
 
@@ -188,7 +188,7 @@ If lead's budget is below the property starting price, do not disqualify them. S
 who can share the right options."
 
 SIZE MISMATCH HANDLING:
-{project_name} has {property_type.capitalize()} options: {bhk_or_size}.
+{project_name} has {property_type} options: {bhk_or_size}.
 If lead asks for a size we do not have:
 Do not say we have it.
 Say: "{project_name} has {bhk_or_size} 
@@ -221,7 +221,7 @@ them call you — which works better?"
 
 WHAT {project_name} IS:
 - Location: {area}
-- Type: {property_type.capitalize()}
+- Type: {property_type}
 - Size Options: {bhk_or_size}
 - Price Range: {price_range}
 - Key selling points:

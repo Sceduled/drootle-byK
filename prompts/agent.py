@@ -28,7 +28,7 @@ async def get_system_prompt(lead_summary: str, lead, db) -> str:
     persona = AGENT_PERSONA.format(
         project_name=project.project_name,
         area=project.area,
-        property_type=project.property_type,
+        property_type=project.property_type.capitalize() if project.property_type else "Property",
         bhk_or_size=project.bhk_or_size,
         price_range=project.price_range,
         key_features=project.key_features
