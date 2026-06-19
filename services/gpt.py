@@ -4,6 +4,7 @@ Service for interacting with OpenAI GPT models.
 import logging
 import json
 import asyncio
+import re
 from openai import AsyncOpenAI
 
 from core.config import settings
@@ -13,6 +14,42 @@ from prompts.agent import (
 )
 
 logger = logging.getLogger(__name__)
+
+def clean_response(text: str) -> str:
+    if not text:
+        return text
+    
+    filters = [
+        r"(?i)^That'?s?\s+a\s+good[^.]*\.\s*",
+        r"(?i)^That'?s?\s+helpful[^.]*\.\s*",
+        r"(?i)^Got it[!,.]?\s*",
+        r"(?i)^Understood[!,.]?\s*",
+        r"(?i)^Great[!,.]?\s*",
+        r"(?i)^Perfect[!,.]?\s*",
+        r"(?i)^Awesome[!,.]?\s*",
+        r"(?i)^Fantastic[!,.]?\s*",
+        r"(?i)^Excellent[!,.]?\s*",
+        r"(?i)^Absolutely[!,.]?\s*",
+        r"(?i)^Certainly[!,.]?\s*",
+        r"(?i)^Sure thing[!,.]?\s*",
+        r"(?i)^Of course[!,.]?\s*",
+        r"(?i)^Happy to help[!,.]?\s*",
+        r"(?i)^That works[!,.]?\s*",
+        r"(?i)^Sounds good[!,.]?\s*"
+    ]
+    
+    sentences = [s for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+    cleaned_sentences = []
+    
+    for s in sentences:
+        s_clean = s.strip()
+        for pattern in filters:
+            s_clean = re.sub(pattern, "", s_clean)
+        s_clean = s_clean.strip()
+        if s_clean:
+            cleaned_sentences.append(s_clean)
+            
+    return " ".join(cleaned_sentences).strip()
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -112,6 +149,9 @@ Lead Score: {lead.lead_score or 'not yet known'}
     except Exception as e:
         logger.error(f"Extraction JSON parse failure: {e}. Raw: {raw_extraction}")
         extraction = {}
+        
+    if reply:
+        reply = clean_response(reply)
         
     return reply, extraction
 
