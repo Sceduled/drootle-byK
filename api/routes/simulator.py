@@ -27,8 +27,10 @@ async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession
     await db.commit()
     await db.refresh(session)
     
-    opening_message_template = SEQUENCE_MESSAGES.get("first_touch", "Hello {name}!")
-    opening_message = opening_message_template.format(name=name)
+    from prompts.agent import get_sequence_message
+    opening_message = get_sequence_message("first_touch", project=None, name=name)
+    if not opening_message:
+        opening_message = f"Hello {name}!"
     
     ai_msg = SimulationMessage(
         session_id=session.id,
