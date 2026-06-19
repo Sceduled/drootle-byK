@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api';
-import { Lock, Power, ToggleRight, ChevronDown, ChevronUp, Save, Clock } from 'lucide-react';
+import { Lock, Power, ToggleRight, ChevronDown, ChevronUp, Save, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SEQUENCE_DESCRIPTIONS = {
@@ -64,6 +64,14 @@ export default function Sequences() {
   const [timingData, setTimingData] = useState({});
   const [timingEdits, setTimingEdits] = useState({});
   const [saving, setSaving] = useState({});
+  const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 3000);
+  };
 
   useEffect(() => {
     fetchSequences();
@@ -103,7 +111,7 @@ export default function Sequences() {
     try {
       await api.patch(`/dashboard/sequences/${seqNumber}`, { enabled: !currentEnabled });
     } catch (err) {
-      alert("Failed to update sequence setting");
+      showToast("Failed to update sequence setting", "error");
       await fetchSequences();
     }
   };
@@ -131,9 +139,9 @@ export default function Sequences() {
       await api.patch(`/dashboard/sequences/${seqNumber}/timing`, payload);
       // Invalidate cached timing so next expand re-fetches
       setTimingData(prev => { const n = { ...prev }; delete n[seqNumber]; return n; });
-      alert(`Timing saved for Sequence ${seqNumber}.`);
+      showToast(`Timing saved for Sequence ${seqNumber}.`, "success");
     } catch (err) {
-      alert("Failed to save timing.");
+      showToast("Failed to save timing.", "error");
     } finally {
       setSaving(prev => ({ ...prev, [seqNumber]: false }));
     }
@@ -161,8 +169,26 @@ export default function Sequences() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="p-8 max-w-4xl mx-auto"
+      className="p-8 max-w-4xl mx-auto relative"
     >
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast.visible && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className={`fixed bottom-8 right-8 flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border z-50 ${
+              toast.type === 'success' 
+                ? 'bg-[#111] border-[#333] text-green-400' 
+                : 'bg-[#111] border-[#333] text-red-400'
+            }`}
+          >
+            {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            <span className="text-sm font-medium text-gray-100">{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 bg-card-hover border border-border rounded-xl flex items-center justify-center text-foreground-muted">
           <ToggleRight size={20} />
