@@ -172,3 +172,11 @@ class SimulationMessage(Base):
     __table_args__ = (
         Index("ix_sim_messages_session_id_created_at_desc", "session_id", text("created_at DESC")),
     )
+
+class CampaignContext(Base):
+    __tablename__ = "campaign_context"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    context_key = Column(String(100), nullable=False, unique=True)
+    context_value = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

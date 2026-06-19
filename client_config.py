@@ -281,11 +281,8 @@ SEQUENCE_MESSAGES = {
         "Happy to help if you have any questions "
     ),
     "dnp_day2": (
-        "Hi {name}! Thought this might be useful - "
-        "Prestige Raintree Park overlooks Varthur Lake "
-        "and is one of the few projects in Whitefield "
-        "with this kind of view and space. "
-        "Most people who visit end up loving it "
+        "Quick update — {units_sold_this_week} units sold in Prestige Raintree Park "
+        "this week. Thought you'd want to know before deciding."
     ),
     "dnp_day3": (
         "No worries {name}, I understand timing might not "
@@ -353,11 +350,7 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 6: FOMO ──────────────────────────────
     "fomo_day1": (
-        "Hi {name}! Quick heads up - "
-        "we've had a lot of interest in the "
-        "lake-facing units this week. "
-        "Inventory in that category is moving. "
-        "Just wanted you to have the full picture "
+        "{current_offer}. Wanted to make sure you had this before it changes."
     ),
     "fomo_day2": (
         "Hi {name}, two families from the same "

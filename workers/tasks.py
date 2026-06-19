@@ -13,7 +13,7 @@ from sqlalchemy import select, text
 
 from core.config import settings
 from core.database import AsyncSessionLocal
-from core.models import Lead, Conversation, NotificationLog, SequenceTiming
+from core.models import Lead, Conversation, NotificationLog, SequenceTiming, CampaignContext
 from core.job_guard import can_send_message
 from prompts.agent import get_sequence_message
 from services.whatsapp import send_message
@@ -37,6 +37,12 @@ async def get_sequence_timing(sequence_number: int, db) -> dict:
         row.message_key: {"value": row.delay_value, "unit": row.delay_unit}
         for row in rows
     }
+
+async def get_campaign_context_dict(db) -> dict:
+    """Fetch campaign context from DB. Returns dict keyed by context_key."""
+    result = await db.execute(select(CampaignContext))
+    rows = result.scalars().all()
+    return {row.context_key: row.context_value for row in rows}
 
 def _td(timing: dict, key: str, default_value: int, default_unit: str) -> timedelta:
     """Get a timedelta from timing dict with a hardcoded fallback."""
@@ -623,7 +629,8 @@ async def dnp_message_2(ctx, lead_id: str):
         
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("dnp_day2", name=lead.name or "there")
+        context = await get_campaign_context_dict(db)
+        msg = get_sequence_message("dnp_day2", name=lead.name or "there", **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1008,7 +1015,8 @@ async def fomo_message_1(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("fomo_day1")
+        context = await get_campaign_context_dict(db)
+        msg = get_sequence_message("fomo_day1", name=lead.name or "there", **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()

@@ -6,6 +6,7 @@ import Metrics from './pages/Metrics';
 import Sequences from './pages/Sequences';
 import Profile from './pages/Profile';
 import Simulator from './pages/Simulator';
+import LiveContext from './pages/LiveContext';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/metrics" element={<PrivateRoute><Metrics /></PrivateRoute>} />
         <Route path="/sequences" element={<PrivateRoute><Sequences /></PrivateRoute>} />
         <Route path="/simulator" element={<PrivateRoute><Simulator /></PrivateRoute>} />
+        <Route path="/live-updates" element={<PrivateRoute><LiveContext /></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/leads" />} />
       </Routes>

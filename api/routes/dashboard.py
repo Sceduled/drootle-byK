@@ -9,7 +9,7 @@ from sqlalchemy import select, func, desc, case
 from typing import Optional
 
 from core.database import get_db
-from core.models import Lead, Conversation, StageHistory, SequenceConfig, NotificationLog, SequenceTiming
+from core.models import Lead, Conversation, StageHistory, SequenceConfig, NotificationLog, SequenceTiming, CampaignContext
 from api.routes.auth import get_current_user
 from api.routes.webhooks import get_arq_pool
 from core.config import settings
