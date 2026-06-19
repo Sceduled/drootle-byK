@@ -44,6 +44,30 @@ const MESSAGE_LABELS = {
   upsell_message_3: "Message 3 — Advisory call offer",
 };
 
+// Map timing task names to actual template keys to show preview
+const TEMPLATE_KEY_MAP = {
+  dnp_message_1: "dnp_day1",
+  dnp_message_2: "dnp_day2",
+  dnp_message_3: "dnp_day3",
+  dnp_message_4: "dnp_day5",
+  post_call_message_2: "post_call_day2",
+  post_call_message_3: "post_call_day3",
+  post_call_message_4: "post_call_day5",
+  post_call_message_5: "post_call_day7",
+  fomo_message_2: "fomo_day2",
+  fomo_message_3: "fomo_day3",
+  reactivation_2: "reactivation_week4",
+  reactivation_3: "reactivation_week6",
+  reactivation_4: "reactivation_week8",
+  reactivation_5: "reactivation_week12",
+  closed_message_1: "closed_day3",
+  closed_message_2: "closed_day14",
+  closed_message_3: "closed_day30",
+  closed_message_4: "closed_day35",
+  upsell_message_2: "upsell_day4",
+  upsell_message_3: "upsell_day7",
+};
+
 // Which sequences have configurable timing
 const TIMING_SEQUENCES = [3, 5, 6, 7, 8, 9];
 
@@ -312,8 +336,8 @@ export default function Sequences() {
                               const edit = edits[row.message_key] || { delay_value: row.delay_value, delay_unit: row.delay_unit };
                               const label = MESSAGE_LABELS[row.message_key] || row.message_key;
                               // Find matching message template preview
-                              const templateKey = Object.keys(row).includes('template_key') ? row.template_key : null;
-                              const preview = seq.templates?.find(t => t.key === row.message_key)?.content;
+                              const tplKey = TEMPLATE_KEY_MAP[row.message_key];
+                              const preview = seq.templates?.find(t => t.key === tplKey)?.content;
 
                               return (
                                 <div key={row.message_key} className="bg-background border border-border rounded-lg p-4 space-y-3">
@@ -338,9 +362,11 @@ export default function Sequences() {
                                     </div>
                                   </div>
                                   {preview && (
-                                    <p className="text-xs text-muted leading-relaxed border-t border-border/50 pt-2 italic">
-                                      "{preview.substring(0, 120)}{preview.length > 120 ? '...' : ''}"
-                                    </p>
+                                    <div className="border-t border-border/50 pt-3 mt-1">
+                                      <p className="text-[13px] text-muted whitespace-pre-wrap leading-relaxed">
+                                        {preview}
+                                      </p>
+                                    </div>
                                   )}
                                 </div>
                               );
