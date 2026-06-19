@@ -270,9 +270,8 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 2: QUALIFICATION NUDGE ──────────────
     "qual_nudge_24h": (
-        "Hey {name}, just checking in! "
-        "Still exploring options in Whitefield? "
-        "Happy to answer any questions "
+        "Hey {name}, just checking in. "
+        "Still exploring options in Whitefield?"
     ),
 
     # ── SEQUENCE 3: DNP RECOVERY ──────────────────────
@@ -311,7 +310,7 @@ SEQUENCE_MESSAGES = {
         " SITE VISIT LEAD\n"
         "{name}\n"
         "Score: {score}\n"
-        "BHK Interest: {industry}\n"
+        "BHK: {industry}\n"
         "Budget: {budget}\n"
         "Concern: {pain_point}\n"
         "Phone: {phone}\n"
@@ -320,11 +319,9 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 5: POST-CALL VALIDATION ─────────────
     "post_call_day1": (
-        "Hi {name}! Great speaking today  "
-        "Hope the call was helpful. "
-        "Our team will follow up with the details "
-        "we discussed - site visit date, floor plan, "
-        "and pricing. Excited to have you visit!"
+        "Hi {name}. Spoke with you earlier today. "
+        "Our team will follow up with the details we discussed "
+        "— site visit date, floor plan, and pricing."
     ),
     "post_call_day2": (
         "Hi {name}! One of our recent buyers - "
@@ -334,11 +331,10 @@ SEQUENCE_MESSAGES = {
         "Sometimes seeing it in person makes all the difference "
     ),
     "post_call_day3": (
-        "'{name} was very helpful and patient, "
-        "never felt pressured. The project itself "
-        "exceeded our expectations on the visit.' "
-        "- This is what one of our recent buyers shared. "
-        "We'd love for you to experience it too "
+        "One of our recent buyers shared: "
+        "'The team was patient and the project exceeded "
+        "our expectations on the visit.' "
+        "We would like you to experience the same."
     ),
     "post_call_day5": (
         "Hi {name}! I remember you mentioned {pain_point}. "
@@ -414,17 +410,14 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 8: CLOSED / REFERRAL + REVIEW ────────
     "closed_day3": (
-        "Hi {name}! Welcome to the Prestige family!  "
-        "So excited for you. "
-        "Our team will be in touch with the next steps - "
-        "documentation, payment schedule, and your "
+        "Hi {name}. Welcome to Prestige Raintree Park. "
+        "Our team will be in touch with the next steps "
+        "— documentation, payment schedule, and your "
         "dedicated relationship manager."
     ),
     "closed_day14": (
-        "Hi {name}! Hope the onboarding process "
-        "has been smooth so far  "
-        "Any questions or anything you need - "
-        "just reach out, happy to help."
+        "Hi {name}. Checking in on how things are going. "
+        "Let us know if you need anything."
     ),
     "closed_day30": (
         "Hi {name}! Quick favour - "
@@ -449,11 +442,11 @@ SEQUENCE_MESSAGES = {
         "Whitefield commercial is doing really well "
     ),
     "upsell_day4": (
-        "Hi {name}! One of our buyers picked up "
-        "a 2BHK in the same project as an investment "
+        "Hi {name}. One of our buyers picked up "
+        "a 3BHK in the same project as an investment "
         "alongside their primary home. "
         "Rental yield in Whitefield is strong "
-        "right now - just something to consider "
+        "right now — something to consider."
     ),
     "upsell_day7": (
         "Hi {name}! Want me to have our investment "

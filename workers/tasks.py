@@ -90,8 +90,52 @@ async def send_opening_message(ctx, lead_id: str):
             await db.commit()
             await log_stage_change(lead_id, old_status, "in_progress", "system", "Opening message sent", db)
             logger.info(f"[{lead_id}] Opening message sent successfully to phone: {lead.phone}")
+            # Schedule qualification nudge 24h later if lead hasn't replied
+            arq_pool = ctx.get('redis')
+            await arq_pool.enqueue_job(
+                'send_qual_nudge', lead_id,
+                _defer_by=timedelta(hours=24),
+                _job_id=f"qual_nudge_{lead_id}"
+            )
         else:
             logger.error(f"[{lead_id}] Failed to send opening message to phone: {lead.phone}")
+
+@safe_task
+async def send_qual_nudge(ctx, lead_id: str):
+    """Sequence 2: 24h nudge if lead hasn't replied after opening message."""
+    logger.info(f"[{lead_id}] Checking if qual nudge should be sent")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead:
+            return
+
+        # Only send if lead has not replied at all (still in_progress, no user messages)
+        if lead.conv_status not in ("new", "in_progress"):
+            logger.info(f"[{lead_id}] Skipping qual nudge: status is {lead.conv_status}")
+            return
+
+        conv_result = await db.execute(
+            select(Conversation)
+            .where(Conversation.lead_id == lead.id, Conversation.role == "user")
+        )
+        user_messages = conv_result.scalars().all()
+        if user_messages:
+            logger.info(f"[{lead_id}] Skipping qual nudge: lead has already replied")
+            return
+
+        if lead.opted_out:
+            return
+
+        display_name = lead.name if lead.name else "there"
+        msg = SEQUENCE_MESSAGES["qual_nudge_24h"].format(name=display_name)
+        success = await send_message(lead.phone, msg)
+        if success:
+            db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+            await db.commit()
+            logger.info(f"[{lead_id}] Qual nudge sent")
+        else:
+            logger.error(f"[{lead_id}] Failed to send qual nudge")
 
 @safe_task
 async def process_buffered_message(ctx, phone: str):
@@ -1003,6 +1047,7 @@ class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     functions = [
         send_opening_message,
+        send_qual_nudge,
         process_buffered_message,
         ask_for_reschedule,
         post_qualification_actions,
