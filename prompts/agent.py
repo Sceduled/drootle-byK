@@ -83,9 +83,9 @@ escalate = true if lead says:
 "I want to speak to a human"
 
 lead_score:
-HOT = clear budget + urgent timeline + specific pain
-WARM = vague budget OR soft timeline OR partial info
-COLD = exploring only / no budget / disengaged
+HOT = clear budget matching project + urgent timeline (within 1 month) + self-use or serious investment intent
+WARM = budget mismatch but flexible, or timeline 1-3 months, or some uncertainty
+COLD = no clear budget, timeline beyond 3 months or just exploring, vague answers throughout
 UNQUALIFIED = not enough info yet
 
 conv_status values:
