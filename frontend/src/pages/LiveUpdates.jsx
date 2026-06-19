@@ -98,7 +98,7 @@ export default function LiveUpdates() {
           <select
             value={activeProject?.project_key || ''}
             onChange={(e) => setActiveProject(projects.find(p => p.project_key === e.target.value))}
-            className="w-full bg-[#1c1c21] border border-border text-foreground rounded-lg p-3 outline-none focus:border-blue-500/50"
+            className="w-full bg-background border border-border text-foreground rounded-lg p-3 outline-none focus:border-blue-500/50"
           >
             {projects.map((p) => (
               <option key={p.project_key} value={p.project_key}>
@@ -129,7 +129,7 @@ export default function LiveUpdates() {
                   value={contextData.units_sold_this_week}
                   onChange={(e) => handleChange('units_sold_this_week', e.target.value)}
                   placeholder="e.g. 12"
-                  className="bg-[#1c1c21] border border-border text-foreground rounded-lg px-4 py-2 outline-none focus:border-blue-500/50"
+                  className="bg-background border border-border text-foreground rounded-lg px-4 py-2 outline-none focus:border-blue-500/50"
                 />
               </div>
 
@@ -140,7 +140,7 @@ export default function LiveUpdates() {
                   value={contextData.current_offer}
                   onChange={(e) => handleChange('current_offer', e.target.value)}
                   placeholder="e.g. Pre-launch pricing ends this month"
-                  className="bg-[#1c1c21] border border-border text-foreground rounded-lg px-4 py-2 outline-none focus:border-blue-500/50"
+                  className="bg-background border border-border text-foreground rounded-lg px-4 py-2 outline-none focus:border-blue-500/50"
                 />
               </div>
 
@@ -151,7 +151,7 @@ export default function LiveUpdates() {
                   value={contextData.market_update}
                   onChange={(e) => handleChange('market_update', e.target.value)}
                   placeholder="e.g. Whitefield prices up 8% this quarter"
-                  className="bg-[#1c1c21] border border-border text-foreground rounded-lg px-4 py-2 outline-none focus:border-blue-500/50"
+                  className="bg-background border border-border text-foreground rounded-lg px-4 py-2 outline-none focus:border-blue-500/50"
                 />
               </div>
 
