@@ -28,7 +28,13 @@ async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession
     await db.refresh(session)
     
     from prompts.agent import get_sequence_message
-    opening_message = get_sequence_message("first_touch", project=None, name=name)
+    from core.models import Project
+    
+    # Default simulator to whitefield_flat project
+    result = await db.execute(select(Project).where(Project.project_key == "whitefield_flat"))
+    project = result.scalars().first()
+    
+    opening_message = get_sequence_message("first_touch", project=project, name=name)
     if not opening_message:
         opening_message = f"Hello {name}!"
     
@@ -109,7 +115,8 @@ async def send_simulation_message(
         id=uuid.uuid4(),
         name=session.name,
         industry="Simulation",
-        conv_status="in_progress"
+        conv_status="in_progress",
+        project_key="whitefield_flat"
     )
     
     # Call GPT (reusing same logic as normal pipeline)
