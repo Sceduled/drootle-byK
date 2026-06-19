@@ -66,6 +66,14 @@ def safe_task(func):
                 # Do NOT re-raise to prevent infinite retries by ARQ
     return wrapper
 
+
+async def get_project_for_lead(lead, db):
+    from core.models import Project
+    if lead.project_key and lead.project_key != "unknown":
+        result = await db.execute(select(Project).where(Project.project_key == lead.project_key))
+        return result.scalars().first()
+    return None
+
 @safe_task
 async def dispatch_voice_call(ctx, lead_id: str):
     if not settings.VOICE_ENABLED:
@@ -103,7 +111,8 @@ async def send_opening_message(ctx, lead_id: str):
             return
             
         display_name = lead.name if lead.name else "there"
-        opening_message = SEQUENCE_MESSAGES["first_touch"].format(name=display_name)
+        project = await get_project_for_lead(lead, db)
+        opening_message = get_sequence_message("first_touch", project=project, name=display_name)
         
         success = await send_message(lead.phone, opening_message)
         
@@ -152,7 +161,8 @@ async def send_qual_nudge(ctx, lead_id: str):
             return
 
         display_name = lead.name if lead.name else "there"
-        msg = SEQUENCE_MESSAGES["qual_nudge_24h"].format(name=display_name)
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("qual_nudge_24h", project=project, name=display_name)
         success = await send_message(lead.phone, msg)
         if success:
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
@@ -234,7 +244,7 @@ This overrides all other instructions."""
             context_rule = "IMPORTANT: Conversation history already exists. You are mid-conversation. DO NOT re-introduce yourself. If the lead says 'hi', just continue naturally from where you left off and DO NOT reset the conversation."
             language_instruction = f"{language_instruction}\n\n{context_rule}".strip()
         
-        reply, extraction = await process_message(lead, history, combined, language_instruction=language_instruction)
+        reply, extraction = await process_message(lead, db, history, combined, language_instruction=language_instruction)
         
         if extraction.get("opted_out"):
             lead.opted_out = True
@@ -367,7 +377,8 @@ async def ask_for_reschedule(ctx, lead_id: str):
         lead = result.scalars().first()
         if not lead: return
         
-        msg = get_sequence_message("reschedule_ask", name=lead.name or "there")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("reschedule_ask", project=project, name=lead.name or "there")
         if not msg:
             logger.error(f"[{lead_id}] reschedule_ask message not found in config")
             return
@@ -399,7 +410,8 @@ async def check_stalled_leads(ctx):
             if already_sent: continue
                 
             name = lead.name if lead.name else "there"
-            msg = get_sequence_message("qual_nudge_24h", name=name)
+            project = await get_project_for_lead(lead, db)
+            msg = get_sequence_message("qual_nudge_24h", project=project, name=name)
             
             await send_message(lead.phone, msg)
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
@@ -512,6 +524,7 @@ async def send_call_reminder(ctx, lead_id: str):
             return
             
         name = lead.name if lead.name else "there"
+        project = await get_project_for_lead(lead, db)
         msg_lead = get_sequence_message(
             "call_reminder_lead",
             name=name,
@@ -521,6 +534,7 @@ async def send_call_reminder(ctx, lead_id: str):
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg_lead))
         
         score_emoji = {"HOT": "🔴", "WARM": "🟡", "COLD": "🔵"}.get(lead.lead_score, "⚪")
+        project = await get_project_for_lead(lead, db)
         msg_sales = get_sequence_message(
             "call_reminder_sales",
             name=name,
@@ -616,7 +630,8 @@ async def dnp_message_1(ctx, lead_id: str):
         
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("dnp_day1", name=lead.name or "there")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("dnp_day1", project=project, name=lead.name or "there")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -630,7 +645,8 @@ async def dnp_message_2(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         context = await get_campaign_context_dict(db)
-        msg = get_sequence_message("dnp_day2", name=lead.name or "there", **context)
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("dnp_day2", project=project, name=lead.name or "there", **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -643,7 +659,8 @@ async def dnp_message_3(ctx, lead_id: str):
         
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("dnp_day3", name=lead.name or "there")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("dnp_day3", project=project, name=lead.name or "there")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -656,7 +673,8 @@ async def dnp_message_4(ctx, lead_id: str):
         
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("dnp_day5", name=lead.name or "there")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("dnp_day5", project=project, name=lead.name or "there")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -703,7 +721,8 @@ async def reactivation_1(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_week2")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("reactivation_week2", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -715,7 +734,8 @@ async def reactivation_2(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_week4")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("reactivation_week4", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -727,7 +747,8 @@ async def reactivation_3(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_week6")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("reactivation_week6", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -739,7 +760,8 @@ async def reactivation_4(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_week8")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("reactivation_week8", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -751,7 +773,8 @@ async def reactivation_5(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("reactivation_week12")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("reactivation_week12", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -789,7 +812,8 @@ async def closed_message_1(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("closed_day3")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("closed_day3", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -801,7 +825,8 @@ async def closed_message_2(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("closed_day14")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("closed_day14", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -813,7 +838,8 @@ async def closed_message_3(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("closed_day30")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("closed_day30", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -825,7 +851,8 @@ async def closed_message_4(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("closed_day35")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("closed_day35", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -851,7 +878,8 @@ async def upsell_message_1(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("upsell_day1")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("upsell_day1", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -863,7 +891,8 @@ async def upsell_message_2(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("upsell_day4")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("upsell_day4", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -875,7 +904,8 @@ async def upsell_message_3(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("upsell_day7")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("upsell_day7", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -937,7 +967,8 @@ async def post_call_message_2(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("post_call_day2", industry=lead.industry or "your industry")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("post_call_day2", project=project, industry=lead.industry or "your industry")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -949,7 +980,8 @@ async def post_call_message_3(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("post_call_day3")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("post_call_day3", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -961,7 +993,8 @@ async def post_call_message_4(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("post_call_day5", pain_point=lead.pain_point or "your current challenges")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("post_call_day5", project=project, pain_point=lead.pain_point or "your current challenges")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -973,7 +1006,8 @@ async def post_call_message_5(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("post_call_day7", name=lead.name or "there")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("post_call_day7", project=project, name=lead.name or "there")
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1016,7 +1050,8 @@ async def fomo_message_1(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         context = await get_campaign_context_dict(db)
-        msg = get_sequence_message("fomo_day1", name=lead.name or "there", **context)
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("fomo_day1", project=project, name=lead.name or "there", **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1028,7 +1063,8 @@ async def fomo_message_2(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("fomo_day2")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("fomo_day2", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1040,7 +1076,8 @@ async def fomo_message_3(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        msg = get_sequence_message("fomo_day3")
+        project = await get_project_for_lead(lead, db)
+        msg = get_sequence_message("fomo_day3", project=project)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()

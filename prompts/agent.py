@@ -5,12 +5,40 @@ from client_config import (
 )
 from core.config import settings
 
-def get_system_prompt(lead_summary: str) -> str:
+async def get_system_prompt(lead_summary: str, lead, db) -> str:
+    from sqlalchemy import select
+    from core.models import Project
+    
+    project = None
+    if lead.project_key and lead.project_key != "unknown":
+        result = await db.execute(select(Project).where(Project.project_key == lead.project_key))
+        project = result.scalars().first()
+        
+    if not project:
+        # Fallback project
+        project = Project(
+            project_name="our upcoming properties",
+            area="your area",
+            property_type="property",
+            bhk_or_size="various options",
+            price_range="various budgets",
+            key_features="premium amenities"
+        )
+        
+    persona = AGENT_PERSONA.format(
+        project_name=project.project_name,
+        area=project.area,
+        property_type=project.property_type,
+        bhk_or_size=project.bhk_or_size,
+        price_range=project.price_range,
+        key_features=project.key_features
+    )
+
     questions_text = "\n".join(
         [f"{i+1}. {q}" for i, q in enumerate(QUALIFICATION_QUESTIONS)]
     )
     return f"""
-{AGENT_PERSONA}
+{persona}
 
 MESSAGING STYLE RULES:
 - Use simple plain English. No corporate words.
@@ -94,6 +122,22 @@ post_call / fomo / cold / closed / upsell /
 archived / lost
 """
 
-def get_sequence_message(key: str, **kwargs) -> str:
+def get_sequence_message(key: str, project=None, **kwargs) -> str:
     template = SEQUENCE_MESSAGES.get(key, "")
-    return template.format(**kwargs)
+    
+    project_name = project.project_name if project else "our properties"
+    area = project.area if project else "your area"
+    price_range = project.price_range if project else "various budgets"
+    key_features = project.key_features if project else "premium amenities"
+    bhk_or_size = project.bhk_or_size if project else "various options"
+    property_type = project.property_type if project else "property"
+    
+    return template.format(
+        project_name=project_name,
+        area=area,
+        price_range=price_range,
+        key_features=key_features,
+        bhk_or_size=bhk_or_size,
+        property_type=property_type,
+        **kwargs
+    )

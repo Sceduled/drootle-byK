@@ -310,7 +310,7 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
                 last_notif.replied = True
 
             # GPT reply
-            reply, extraction = await process_message(lead, history, combined)
+            reply, extraction = await process_message(lead, db, history, combined)
             logger.info(f"[{lead.id}] GPT reply: {reply!r}")
 
             # Persist conversation
@@ -410,7 +410,7 @@ async def handle_voice_callback(payload: VoiceCallbackPayload, db: AsyncSession)
     history = result.scalars().all()
     
     from services.gpt import process_message
-    _, extraction = await process_message(lead, history, "", is_voice=True)
+    _, extraction = await process_message(lead, db, history, "", is_voice=True)
     
     if extraction.get('industry') is not None: lead.industry = extraction['industry']
     if extraction.get('target_markets') is not None: lead.target_markets = extraction['target_markets']

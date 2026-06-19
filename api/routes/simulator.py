@@ -113,6 +113,7 @@ async def send_simulation_message(
     # Call GPT (reusing same logic as normal pipeline)
     reply, extraction = await process_message(
         lead=dummy_lead,
+        db=db,
         conversation_history=history[:-1], # pass all except the one we just added? Wait, process_message expects all PREVIOUS messages in conversation_history and takes new_message separately.
         new_message=user_text,
         is_voice=False,
