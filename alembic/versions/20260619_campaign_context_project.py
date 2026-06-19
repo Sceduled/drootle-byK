@@ -23,13 +23,8 @@ def upgrade() -> None:
     # 2. Add foreign key constraint for project_key referencing projects table
     op.create_foreign_key('fk_campaign_context_project', 'campaign_context', 'projects', ['project_key'], ['project_key'])
 
-    # 3. Drop the old unique constraint on context_key
-    # The name of the implicit constraint created by unique=True is usually "campaign_context_context_key_key" in Postgres
-    # We use a try-except block here inside a context manager or just drop it directly
-    try:
-        op.drop_constraint('campaign_context_context_key_key', 'campaign_context', type_='unique')
-    except Exception as e:
-        print(f"Notice: Could not drop constraint campaign_context_context_key_key: {e}")
+    # 3. Drop the old unique constraint on context_key safely using Postgres IF EXISTS
+    op.execute("ALTER TABLE campaign_context DROP CONSTRAINT IF EXISTS campaign_context_context_key_key")
 
     # 4. Create the new composite unique constraint
     op.create_unique_constraint('uq_project_context', 'campaign_context', ['project_key', 'context_key'])
