@@ -18,6 +18,9 @@ venv/
 env/
 .venv/
 
+# Frontend build output — track this so Railway can serve it without a build step
+# frontend/dist is intentionally committed
+
 # Alembic
 alembic/versions/*.pyc
 
