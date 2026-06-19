@@ -9,7 +9,7 @@ from sqlalchemy import select, func, desc, case
 from typing import Optional
 
 from core.database import get_db
-from core.models import Lead, Conversation, StageHistory, SequenceConfig, NotificationLog
+from core.models import Lead, Conversation, StageHistory, SequenceConfig, NotificationLog, SequenceTiming
 from api.routes.auth import get_current_user
 from api.routes.webhooks import get_arq_pool
 from core.config import settings
@@ -431,6 +431,66 @@ async def patch_sequence(sequence_number: int, payload: SequencePatchPayload, db
     await db.commit()
     
     return {"success": True, "enabled": seq.enabled}
+
+
+class TimingPatchItem(BaseModel):
+    message_key: str
+    delay_value: int
+    delay_unit: str  # "hours" or "days"
+
+@router.get("/sequences/{sequence_number}/timing")
+async def get_sequence_timing_endpoint(
+    sequence_number: int,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(SequenceTiming)
+        .where(SequenceTiming.sequence_number == sequence_number)
+        .order_by(SequenceTiming.display_order)
+    )
+    rows = result.scalars().all()
+    return [
+        {
+            "message_key": r.message_key,
+            "delay_value": r.delay_value,
+            "delay_unit": r.delay_unit,
+            "display_order": r.display_order,
+        }
+        for r in rows
+    ]
+
+@router.patch("/sequences/{sequence_number}/timing")
+async def patch_sequence_timing(
+    sequence_number: int,
+    payload: list[TimingPatchItem],
+    db: AsyncSession = Depends(get_db)
+):
+    for item in payload:
+        if item.delay_value <= 0:
+            return {"error": f"delay_value must be > 0 for key '{item.message_key}'"}
+        if item.delay_unit not in ("hours", "days"):
+            return {"error": f"delay_unit must be 'hours' or 'days' for key '{item.message_key}'"}
+
+        result = await db.execute(
+            select(SequenceTiming).where(
+                SequenceTiming.sequence_number == sequence_number,
+                SequenceTiming.message_key == item.message_key
+            )
+        )
+        row = result.scalars().first()
+        if row:
+            row.delay_value = item.delay_value
+            row.delay_unit = item.delay_unit
+        else:
+            db.add(SequenceTiming(
+                sequence_number=sequence_number,
+                message_key=item.message_key,
+                delay_value=item.delay_value,
+                delay_unit=item.delay_unit,
+                display_order=0
+            ))
+    await db.commit()
+    return {"success": True, "updated": len(payload)}
 
 @router.get("/profile")
 async def get_profile():

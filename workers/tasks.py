@@ -13,7 +13,7 @@ from sqlalchemy import select, text
 
 from core.config import settings
 from core.database import AsyncSessionLocal
-from core.models import Lead, Conversation, NotificationLog
+from core.models import Lead, Conversation, NotificationLog, SequenceTiming
 from core.job_guard import can_send_message
 from prompts.agent import get_sequence_message
 from services.whatsapp import send_message
@@ -26,6 +26,24 @@ from services.bolna import trigger_outbound_call as _trigger_outbound_bolna
 from services.pipecat_client import trigger_pipecat_call as _trigger_pipecat_call
 
 logger = logging.getLogger(__name__)
+
+async def get_sequence_timing(sequence_number: int, db) -> dict:
+    """Fetch timing config for a sequence from DB. Returns dict keyed by message_key."""
+    result = await db.execute(
+        select(SequenceTiming).where(SequenceTiming.sequence_number == sequence_number)
+    )
+    rows = result.scalars().all()
+    return {
+        row.message_key: {"value": row.delay_value, "unit": row.delay_unit}
+        for row in rows
+    }
+
+def _td(timing: dict, key: str, default_value: int, default_unit: str) -> timedelta:
+    """Get a timedelta from timing dict with a hardcoded fallback."""
+    if key in timing:
+        t = timing[key]
+        return timedelta(**{t["unit"]: t["value"]})
+    return timedelta(**{default_unit: default_value})
 
 def safe_task(func):
     @functools.wraps(func)
@@ -577,10 +595,12 @@ async def start_dnp_recovery(ctx, lead_id: str):
         await log_stage_change(lead_id, old_status, "stalled", "system", "Triggered DNP Recovery", db)
         
     arq_pool = ctx.get('redis')
-    await arq_pool.enqueue_job('dnp_message_1', lead_id, _defer_by=timedelta(hours=2), _job_id=f"dnp_1_{lead_id}")
-    await arq_pool.enqueue_job('dnp_message_2', lead_id, _defer_by=timedelta(hours=24), _job_id=f"dnp_2_{lead_id}")
-    await arq_pool.enqueue_job('dnp_message_3', lead_id, _defer_by=timedelta(hours=48), _job_id=f"dnp_3_{lead_id}")
-    await arq_pool.enqueue_job('dnp_message_4', lead_id, _defer_by=timedelta(hours=72), _job_id=f"dnp_4_{lead_id}")
+    async with AsyncSessionLocal() as db:
+        timing = await get_sequence_timing(3, db)
+    await arq_pool.enqueue_job('dnp_message_1', lead_id, _defer_by=_td(timing,'dnp_message_1',2,'hours'), _job_id=f"dnp_1_{lead_id}")
+    await arq_pool.enqueue_job('dnp_message_2', lead_id, _defer_by=_td(timing,'dnp_message_2',24,'hours'), _job_id=f"dnp_2_{lead_id}")
+    await arq_pool.enqueue_job('dnp_message_3', lead_id, _defer_by=_td(timing,'dnp_message_3',48,'hours'), _job_id=f"dnp_3_{lead_id}")
+    await arq_pool.enqueue_job('dnp_message_4', lead_id, _defer_by=_td(timing,'dnp_message_4',72,'hours'), _job_id=f"dnp_4_{lead_id}")
 
 @safe_task
 async def dnp_message_1(ctx, lead_id: str):
@@ -660,12 +680,14 @@ async def start_reactivation(ctx, lead_id: str):
         if not can_send: return
         
     arq_pool = ctx.get('redis')
+    async with AsyncSessionLocal() as db:
+        timing = await get_sequence_timing(7, db)
     await arq_pool.enqueue_job('reactivation_1', lead_id, _job_id=f"re_1_{lead_id}")
-    await arq_pool.enqueue_job('reactivation_2', lead_id, _defer_by=timedelta(days=14), _job_id=f"re_2_{lead_id}")
-    await arq_pool.enqueue_job('reactivation_3', lead_id, _defer_by=timedelta(days=28), _job_id=f"re_3_{lead_id}")
-    await arq_pool.enqueue_job('reactivation_4', lead_id, _defer_by=timedelta(days=42), _job_id=f"re_4_{lead_id}")
-    await arq_pool.enqueue_job('reactivation_5', lead_id, _defer_by=timedelta(days=70), _job_id=f"re_5_{lead_id}")
-    await arq_pool.enqueue_job('check_reactivation_complete', lead_id, _defer_by=timedelta(days=84), _job_id=f"re_check_{lead_id}")
+    await arq_pool.enqueue_job('reactivation_2', lead_id, _defer_by=_td(timing,'reactivation_2',14,'days'), _job_id=f"re_2_{lead_id}")
+    await arq_pool.enqueue_job('reactivation_3', lead_id, _defer_by=_td(timing,'reactivation_3',28,'days'), _job_id=f"re_3_{lead_id}")
+    await arq_pool.enqueue_job('reactivation_4', lead_id, _defer_by=_td(timing,'reactivation_4',42,'days'), _job_id=f"re_4_{lead_id}")
+    await arq_pool.enqueue_job('reactivation_5', lead_id, _defer_by=_td(timing,'reactivation_5',70,'days'), _job_id=f"re_5_{lead_id}")
+    await arq_pool.enqueue_job('check_reactivation_complete', lead_id, _defer_by=_td(timing,'check_reactivation_complete',84,'days'), _job_id=f"re_check_{lead_id}")
 
 @safe_task
 async def reactivation_1(ctx, lead_id: str):
@@ -746,10 +768,12 @@ async def start_closed_sequence(ctx, lead_id: str):
         if not can_send: return
         
     arq_pool = ctx.get('redis')
-    await arq_pool.enqueue_job('closed_message_1', lead_id, _defer_by=timedelta(days=3), _job_id=f"closed_1_{lead_id}")
-    await arq_pool.enqueue_job('closed_message_2', lead_id, _defer_by=timedelta(days=14), _job_id=f"closed_2_{lead_id}")
-    await arq_pool.enqueue_job('closed_message_3', lead_id, _defer_by=timedelta(days=30), _job_id=f"closed_3_{lead_id}")
-    await arq_pool.enqueue_job('closed_message_4', lead_id, _defer_by=timedelta(days=35), _job_id=f"closed_4_{lead_id}")
+    async with AsyncSessionLocal() as db:
+        timing = await get_sequence_timing(8, db)
+    await arq_pool.enqueue_job('closed_message_1', lead_id, _defer_by=_td(timing,'closed_message_1',3,'days'), _job_id=f"closed_1_{lead_id}")
+    await arq_pool.enqueue_job('closed_message_2', lead_id, _defer_by=_td(timing,'closed_message_2',14,'days'), _job_id=f"closed_2_{lead_id}")
+    await arq_pool.enqueue_job('closed_message_3', lead_id, _defer_by=_td(timing,'closed_message_3',30,'days'), _job_id=f"closed_3_{lead_id}")
+    await arq_pool.enqueue_job('closed_message_4', lead_id, _defer_by=_td(timing,'closed_message_4',35,'days'), _job_id=f"closed_4_{lead_id}")
 
 @safe_task
 async def closed_message_1(ctx, lead_id: str):
@@ -807,9 +831,11 @@ async def start_upsell_sequence(ctx, lead_id: str):
         if not can_send: return
         
     arq_pool = ctx.get('redis')
+    async with AsyncSessionLocal() as db:
+        timing = await get_sequence_timing(9, db)
     await arq_pool.enqueue_job('upsell_message_1', lead_id, _job_id=f"up_1_{lead_id}")
-    await arq_pool.enqueue_job('upsell_message_2', lead_id, _defer_by=timedelta(days=4), _job_id=f"up_2_{lead_id}")
-    await arq_pool.enqueue_job('upsell_message_3', lead_id, _defer_by=timedelta(days=7), _job_id=f"up_3_{lead_id}")
+    await arq_pool.enqueue_job('upsell_message_2', lead_id, _defer_by=_td(timing,'upsell_message_2',4,'days'), _job_id=f"up_2_{lead_id}")
+    await arq_pool.enqueue_job('upsell_message_3', lead_id, _defer_by=_td(timing,'upsell_message_3',7,'days'), _job_id=f"up_3_{lead_id}")
 
 @safe_task
 async def upsell_message_1(ctx, lead_id: str):
@@ -855,12 +881,14 @@ async def start_post_call_sequence(ctx, lead_id: str):
         if not can_send: return
         
     arq_pool = ctx.get('redis')
+    async with AsyncSessionLocal() as db:
+        timing = await get_sequence_timing(5, db)
     await arq_pool.enqueue_job('post_call_message_1', lead_id, _job_id=f"pc_1_{lead_id}")
-    await arq_pool.enqueue_job('post_call_message_2', lead_id, _defer_by=timedelta(days=1), _job_id=f"pc_2_{lead_id}")
-    await arq_pool.enqueue_job('post_call_message_3', lead_id, _defer_by=timedelta(days=2), _job_id=f"pc_3_{lead_id}")
-    await arq_pool.enqueue_job('post_call_message_4', lead_id, _defer_by=timedelta(days=4), _job_id=f"pc_4_{lead_id}")
-    await arq_pool.enqueue_job('post_call_message_5', lead_id, _defer_by=timedelta(days=6), _job_id=f"pc_5_{lead_id}")
-    await arq_pool.enqueue_job('check_post_call_complete', lead_id, _defer_by=timedelta(days=7), _job_id=f"pc_check_{lead_id}")
+    await arq_pool.enqueue_job('post_call_message_2', lead_id, _defer_by=_td(timing,'post_call_message_2',1,'days'), _job_id=f"pc_2_{lead_id}")
+    await arq_pool.enqueue_job('post_call_message_3', lead_id, _defer_by=_td(timing,'post_call_message_3',2,'days'), _job_id=f"pc_3_{lead_id}")
+    await arq_pool.enqueue_job('post_call_message_4', lead_id, _defer_by=_td(timing,'post_call_message_4',4,'days'), _job_id=f"pc_4_{lead_id}")
+    await arq_pool.enqueue_job('post_call_message_5', lead_id, _defer_by=_td(timing,'post_call_message_5',6,'days'), _job_id=f"pc_5_{lead_id}")
+    await arq_pool.enqueue_job('check_post_call_complete', lead_id, _defer_by=_td(timing,'check_post_call_complete',7,'days'), _job_id=f"pc_check_{lead_id}")
 
 @safe_task
 async def post_call_message_1(ctx, lead_id: str):
@@ -966,10 +994,12 @@ async def start_fomo_sequence(ctx, lead_id: str):
         if not can_send: return
         
     arq_pool = ctx.get('redis')
+    async with AsyncSessionLocal() as db:
+        timing = await get_sequence_timing(6, db)
     await arq_pool.enqueue_job('fomo_message_1', lead_id, _job_id=f"fomo_1_{lead_id}")
-    await arq_pool.enqueue_job('fomo_message_2', lead_id, _defer_by=timedelta(days=1), _job_id=f"fomo_2_{lead_id}")
-    await arq_pool.enqueue_job('fomo_message_3', lead_id, _defer_by=timedelta(days=2), _job_id=f"fomo_3_{lead_id}")
-    await arq_pool.enqueue_job('check_fomo_complete', lead_id, _defer_by=timedelta(days=3), _job_id=f"fomo_check_{lead_id}")
+    await arq_pool.enqueue_job('fomo_message_2', lead_id, _defer_by=_td(timing,'fomo_message_2',1,'days'), _job_id=f"fomo_2_{lead_id}")
+    await arq_pool.enqueue_job('fomo_message_3', lead_id, _defer_by=_td(timing,'fomo_message_3',2,'days'), _job_id=f"fomo_3_{lead_id}")
+    await arq_pool.enqueue_job('check_fomo_complete', lead_id, _defer_by=_td(timing,'check_fomo_complete',3,'days'), _job_id=f"fomo_check_{lead_id}")
 
 @safe_task
 async def fomo_message_1(ctx, lead_id: str):

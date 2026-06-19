@@ -133,6 +133,19 @@ class SequenceConfig(Base):
     enabled = Column(Boolean, default=True)
 
 
+class SequenceTiming(Base):
+    __tablename__ = "sequence_timing"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sequence_number = Column(Integer, nullable=False, index=True)
+    message_key = Column(Text, nullable=False)
+    delay_value = Column(Integer, nullable=False)
+    delay_unit = Column(Text, nullable=False)   # "hours" or "days"
+    display_order = Column(Integer, nullable=False, server_default=text("0"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class SimulationSession(Base):
     __tablename__ = "simulation_sessions"
 
