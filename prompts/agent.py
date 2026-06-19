@@ -132,6 +132,17 @@ def get_sequence_message(key: str, project=None, **kwargs) -> str:
     bhk_or_size = project.bhk_or_size if project else "various options"
     property_type = project.property_type if project else "property"
     
+    fallback_values = {
+        "units_sold_this_week": "Several",
+        "current_offer": "Current pricing",
+        "market_update": "There's been positive movement in the area"
+    }
+
+    # Merge fallbacks for missing kwargs
+    for k, v in fallback_values.items():
+        if k not in kwargs or not kwargs[k]:
+            kwargs[k] = v
+
     return template.format(
         project_name=project_name,
         area=area,

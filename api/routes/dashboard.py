@@ -642,3 +642,36 @@ async def create_user(payload: CreateUserPayload, db: AsyncSession = Depends(get
     db.add(new_user)
     await db.commit()
     return {"success": True, "username": new_user.username}
+
+@router.get("/campaign-context/{project_key}")
+async def get_campaign_context(project_key: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(CampaignContext).where(CampaignContext.project_key == project_key))
+    contexts = result.scalars().all()
+    return {c.context_key: c.context_value for c in contexts}
+
+class CampaignContextPayload(BaseModel):
+    contexts: dict
+
+@router.post("/campaign-context/{project_key}")
+async def update_campaign_context(project_key: str, payload: CampaignContextPayload, db: AsyncSession = Depends(get_db)):
+    from core.models import Project
+    # Check if project exists
+    proj_result = await db.execute(select(Project).where(Project.project_key == project_key))
+    if not proj_result.scalars().first():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    for key, value in payload.contexts.items():
+        # Check if it exists
+        result = await db.execute(
+            select(CampaignContext)
+            .where(CampaignContext.project_key == project_key, CampaignContext.context_key == key)
+        )
+        context_obj = result.scalars().first()
+        if context_obj:
+            context_obj.context_value = str(value)
+        else:
+            db.add(CampaignContext(project_key=project_key, context_key=key, context_value=str(value)))
+    
+    await db.commit()
+    return {"success": True}

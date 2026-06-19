@@ -38,9 +38,12 @@ async def get_sequence_timing(sequence_number: int, db) -> dict:
         for row in rows
     }
 
-async def get_campaign_context_dict(db) -> dict:
+async def get_campaign_context_dict(db, project_key=None) -> dict:
     """Fetch campaign context from DB. Returns dict keyed by context_key."""
-    result = await db.execute(select(CampaignContext))
+    stmt = select(CampaignContext)
+    if project_key:
+        stmt = stmt.where(CampaignContext.project_key == project_key)
+    result = await db.execute(stmt)
     rows = result.scalars().all()
     return {row.context_key: row.context_value for row in rows}
 
@@ -112,7 +115,8 @@ async def send_opening_message(ctx, lead_id: str):
             
         display_name = lead.name if lead.name else "there"
         project = await get_project_for_lead(lead, db)
-        opening_message = get_sequence_message("first_touch", project=project, name=display_name)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        opening_message = get_sequence_message("first_touch", project=project, name=display_name, pain_point=lead.pain_point, **context)
         
         success = await send_message(lead.phone, opening_message)
         
@@ -162,7 +166,8 @@ async def send_qual_nudge(ctx, lead_id: str):
 
         display_name = lead.name if lead.name else "there"
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("qual_nudge_24h", project=project, name=display_name)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("qual_nudge_24h", project=project, name=display_name, pain_point=lead.pain_point, **context)
         success = await send_message(lead.phone, msg)
         if success:
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
@@ -378,7 +383,8 @@ async def ask_for_reschedule(ctx, lead_id: str):
         if not lead: return
         
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("reschedule_ask", project=project, name=lead.name or "there")
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("reschedule_ask", project=project, name=lead.name or "there", pain_point=lead.pain_point, **context)
         if not msg:
             logger.error(f"[{lead_id}] reschedule_ask message not found in config")
             return
@@ -411,7 +417,8 @@ async def check_stalled_leads(ctx):
                 
             name = lead.name if lead.name else "there"
             project = await get_project_for_lead(lead, db)
-            msg = get_sequence_message("qual_nudge_24h", project=project, name=name)
+            context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+            msg = get_sequence_message("qual_nudge_24h", project=project, name=name, pain_point=lead.pain_point, **context)
             
             await send_message(lead.phone, msg)
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
@@ -525,25 +532,26 @@ async def send_call_reminder(ctx, lead_id: str):
             
         name = lead.name if lead.name else "there"
         project = await get_project_for_lead(lead, db)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
         msg_lead = get_sequence_message(
             "call_reminder_lead",
             name=name,
             time=lead.preferred_call_time
-        )
+        , pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg_lead)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg_lead))
         
         score_emoji = {"HOT": "🔴", "WARM": "🟡", "COLD": "🔵"}.get(lead.lead_score, "⚪")
         project = await get_project_for_lead(lead, db)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
         msg_sales = get_sequence_message(
             "call_reminder_sales",
             name=name,
             score=f"{score_emoji} {lead.lead_score or 'UNSCORED'}",
             industry=lead.industry or "Unknown",
             budget=lead.monthly_ad_budget or "Unknown",
-            pain_point=lead.pain_point or "Unknown",
             phone=lead.phone
-        )
+        , pain_point=lead.pain_point, **context)
 
         numbers = settings.sales_team_numbers
         for number in numbers:
@@ -631,7 +639,8 @@ async def dnp_message_1(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("dnp_day1", project=project, name=lead.name or "there")
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("dnp_day1", project=project, name=lead.name or "there", pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -644,9 +653,9 @@ async def dnp_message_2(ctx, lead_id: str):
         
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        context = await get_campaign_context_dict(db)
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("dnp_day2", project=project, name=lead.name or "there", **context)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("dnp_day2", project=project, name=lead.name or "there", pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -660,7 +669,8 @@ async def dnp_message_3(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("dnp_day3", project=project, name=lead.name or "there")
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("dnp_day3", project=project, name=lead.name or "there", pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -674,7 +684,8 @@ async def dnp_message_4(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("dnp_day5", project=project, name=lead.name or "there")
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("dnp_day5", project=project, name=lead.name or "there", pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -722,7 +733,8 @@ async def reactivation_1(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("reactivation_week2", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("reactivation_week2", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -735,7 +747,8 @@ async def reactivation_2(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("reactivation_week4", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("reactivation_week4", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -748,7 +761,8 @@ async def reactivation_3(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("reactivation_week6", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("reactivation_week6", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -761,7 +775,8 @@ async def reactivation_4(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("reactivation_week8", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("reactivation_week8", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -774,7 +789,8 @@ async def reactivation_5(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("reactivation_week12", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("reactivation_week12", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -813,7 +829,8 @@ async def closed_message_1(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("closed_day3", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("closed_day3", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -826,7 +843,8 @@ async def closed_message_2(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("closed_day14", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("closed_day14", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -839,7 +857,8 @@ async def closed_message_3(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("closed_day30", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("closed_day30", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -852,7 +871,8 @@ async def closed_message_4(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("closed_day35", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("closed_day35", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -879,7 +899,8 @@ async def upsell_message_1(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("upsell_day1", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("upsell_day1", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -892,7 +913,8 @@ async def upsell_message_2(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("upsell_day4", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("upsell_day4", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -905,7 +927,8 @@ async def upsell_message_3(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("upsell_day7", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("upsell_day7", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -968,7 +991,8 @@ async def post_call_message_2(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("post_call_day2", project=project, industry=lead.industry or "your industry")
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("post_call_day2", project=project, industry=lead.industry or "your industry", pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -981,7 +1005,8 @@ async def post_call_message_3(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("post_call_day3", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("post_call_day3", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -994,7 +1019,8 @@ async def post_call_message_4(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("post_call_day5", project=project, pain_point=lead.pain_point or "your current challenges")
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("post_call_day5", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1007,7 +1033,8 @@ async def post_call_message_5(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("post_call_day7", project=project, name=lead.name or "there")
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("post_call_day7", project=project, name=lead.name or "there", pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1049,9 +1076,9 @@ async def fomo_message_1(ctx, lead_id: str):
         if not can_send: return
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
-        context = await get_campaign_context_dict(db)
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("fomo_day1", project=project, name=lead.name or "there", **context)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("fomo_day1", project=project, name=lead.name or "there", pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1064,7 +1091,8 @@ async def fomo_message_2(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("fomo_day2", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("fomo_day2", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()
@@ -1077,7 +1105,8 @@ async def fomo_message_3(ctx, lead_id: str):
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         project = await get_project_for_lead(lead, db)
-        msg = get_sequence_message("fomo_day3", project=project)
+        context = await get_campaign_context_dict(db, project_key=project.project_key if project else None)
+        msg = get_sequence_message("fomo_day3", project=project, pain_point=lead.pain_point, **context)
         await send_message(lead.phone, msg)
         db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
         await db.commit()

@@ -257,7 +257,7 @@ SEQUENCE_MESSAGES = {
     "dnp_day1": (
         "Hey {name}! Just wanted to check - "
         "did you get a chance to look at the details? "
-        "Happy to help if you have any questions "
+        "Happy to help if you have any questions"
     ),
     "dnp_day2": (
         "Quick update — {units_sold_this_week} units sold in {project_name} "
@@ -266,13 +266,13 @@ SEQUENCE_MESSAGES = {
     "dnp_day3": (
         "No worries {name}, I understand timing might not "
         "be right. Whenever you're ready, I'm here. "
-        "Just drop me a message "
+        "Just drop me a message"
     ),
     "dnp_day5": (
         "Hi {name}, I'll stop following up after this - "
         "just didn't want to close your enquiry "
         "without checking one last time. "
-        "Still interested in {area}? "
+        "Still interested in {area}?"
     ),
 
     # ── SEQUENCE 4: CALL REMINDERS ────────────────────
@@ -300,80 +300,70 @@ SEQUENCE_MESSAGES = {
         "— site visit date, plan, and pricing."
     ),
     "post_call_day2": (
-        "Hi {name}! One of our recent buyers - "
-        "was in two minds about {area}. "
-        "One site visit and they booked within a week. "
-        "Sometimes seeing it in person makes all the difference "
+        "Hi {name}! One of our recent buyers was "
+        "also looking for {bhk_or_size} in {area}. "
+        "They decided to visit {project_name} last week and just booked. "
+        "Seeing the space in person really gives clarity."
     ),
     "post_call_day3": (
-        "One of our recent buyers shared: "
-        "'The team was patient and the project exceeded "
-        "our expectations on the visit.' "
-        "We would like you to experience the same."
+        "Hi {name}! I've attached a quick walkthrough video "
+        "and the floor plans for the {bhk_or_size} options. "
+        "Let me know if you have trouble opening them."
     ),
     "post_call_day5": (
-        "Hi {name}! I remember you mentioned {pain_point}. "
-        "That's actually something our team addresses "
-        "specifically during the site visit - "
-        "from loan options to legal clarity. "
-        "Would love to help you get those answers."
+        "You mentioned {pain_point} earlier — that's something "
+        "our team specifically addresses on every visit, from "
+        "loan options to documentation clarity. We want to make sure you have complete confidence."
     ),
     "post_call_day7": (
         "Hi {name}! Just checking - "
         "are you still exploring {project_name}? "
         "We'd love to have you visit this week. "
         "Even a quick 45-min visit gives you "
-        "a much clearer picture "
+        "a much clearer picture"
     ),
 
     # ── SEQUENCE 6: FOMO ──────────────────────────────
     "fomo_day1": (
-        "{current_offer}. Wanted to make sure you had this before it changes."
+        "Quick update: {units_sold_this_week} units have moved in {project_name} "
+        "this week alone. Wanted to make sure you had this before availability drops further."
     ),
     "fomo_day2": (
-        "Hi {name}, two families visited last week "
-        "and both are in final discussions. "
-        "Inventory in {area} at this price point "
-        "doesn't stay long - just keeping you informed."
+        "Hi {name}. Just a heads up — {market_update}. "
+        "If you're still considering {area}, this might be the right time to visit."
     ),
     "fomo_day3": (
-        "Hi {name}! I'll hold back from messaging "
-        "after this - I know you're busy. "
-        "If you'd like to visit before we close "
-        "the current pricing, just say the word "
-        "and I'll arrange it immediately "
+        "Hi {name}! {current_offer}. "
+        "I won't message again after this, but wanted to make sure "
+        "you didn't miss out before things change."
     ),
 
     # ── SEQUENCE 7: LEAD RECOVERY ─────────────────────
     "reactivation_week2": (
-        "Hi {name}! Hope you're doing well  "
-        "{area} has seen some interesting "
-        "price movement lately - "
-        "thought you might find this useful "
-        "if you're still exploring."
+        "Hi {name}! Hope you're doing well. "
+        "Just wanted to share a quick update: {market_update}. "
+        "Thought you might find this useful for your research."
     ),
     "reactivation_week4": (
-        "Hi {name}! The connectivity to "
-        "{area} is getting better every month. "
-        "Just thought of you "
+        "Hi {name}! When choosing a property in {area}, "
+        "making sure the RERA documentation and carpet area measurements are clear is critical. "
+        "Just a tip to keep in mind while you explore."
     ),
     "reactivation_week6": (
-        "Hey {name}! Things change - "
-        "still keeping an eye out for property "
-        "in {area} or have you sorted it? "
+        "Hey {name}! Things change quickly - "
+        "are you still keeping an eye out for property "
+        "in {area} or have you already found something?"
     ),
     "reactivation_week8": (
-        "Hi {name}! We have a few buyers "
-        "who couldn't visit in person "
-        "and we arranged virtual walkthroughs for them. "
-        "If that's something that works better for you, "
-        "happy to set it up "
+        "Hi {name}! We have a few {bhk_or_size} options in {project_name} "
+        "that have been very popular for investment lately, rather than just self-use. "
+        "Would you be open to exploring a different angle?"
     ),
     "reactivation_week12": (
         "Hi {name}, I'll close your enquiry after this "
         "so I don't keep bothering you. "
         "If anything has changed and you'd like "
-        "to explore again, I'm just a message away "
+        "to explore {project_name} again, I'm just a message away"
     ),
 
     # ── SEQUENCE 8: CLOSED / REFERRAL + REVIEW ────────
@@ -392,14 +382,14 @@ SEQUENCE_MESSAGES = {
         "do you know anyone looking for a home "
         "or investment in {area}? "
         "Would mean a lot if you could refer them. "
-        "Happy to take care of them the same way "
+        "Happy to take care of them the same way"
     ),
     "closed_day35": (
         "Hi {name}! If you've had a good experience "
         "so far, would you mind sharing a quick "
         "2-line review? "
         "It really helps other families "
-        "make the right decision "
+        "make the right decision"
     ),
 
     # ── SEQUENCE 9: UPSELL ────────────────────────────
@@ -407,7 +397,7 @@ SEQUENCE_MESSAGES = {
         "Hi {name}! Now that your home is sorted, "
         "have you thought about a commercial unit "
         "or a second property for investment? "
-        "Commercial properties in {area} are doing really well "
+        "Commercial properties in {area} are doing really well"
     ),
     "upsell_day4": (
         "Hi {name}. One of our buyers picked up "
@@ -420,6 +410,6 @@ SEQUENCE_MESSAGES = {
         "Hi {name}! Want me to have our investment "
         "advisory team give you a quick call? "
         "No pressure - just to see if it makes "
-        "sense for your situation "
+        "sense for your situation"
     ),
 }

@@ -3,7 +3,7 @@ SQLAlchemy ORM models definition.
 """
 import uuid
 from sqlalchemy import (
-    Column, String, Text, Integer, Boolean, DateTime, ForeignKey, Index, text
+    Column, String, Text, Integer, Boolean, DateTime, ForeignKey, Index, text, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import declarative_base, relationship
@@ -179,9 +179,14 @@ class CampaignContext(Base):
     __tablename__ = "campaign_context"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    context_key = Column(String(100), nullable=False, unique=True)
+    project_key = Column(Text, ForeignKey("projects.project_key"), nullable=True, index=True)
+    context_key = Column(String(100), nullable=False)
     context_value = Column(Text, nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('project_key', 'context_key', name='uq_project_context'),
+    )
 
 class Project(Base):
     __tablename__ = "projects"
