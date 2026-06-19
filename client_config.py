@@ -4,6 +4,7 @@
 
 # ─── AGENT IDENTITY ───────────────────────────────────
 AGENT_NAME = "Priya"
+CLIENT_BRAND = "Drootle"
 OWNER_NAME = "Darshaan"
 
 AGENT_PERSONA = """
