@@ -11,7 +11,7 @@ import uuid
 
 
 # revision identifiers, used by Alembic.
-revision = '20260619_campaign_context_project'
+revision = '20260619_camp_ctx_proj'
 down_revision = '20260619_lead_projects'
 branch_labels = None
 depends_on = None
