@@ -1,50 +1,63 @@
 // Google Apps Script for Agentic Lead AI
-// Triggers on new rows in the leads sheet and sends a webhook to the backend.
+// Polling trigger that checks the sheet every minute for new leads.
+// Run setupTimeDrivenTrigger() once manually to install.
 
-const WEBHOOK_URL = "https://YOUR-RAILWAY-DOMAIN.up.railway.app/api/webhooks/new-lead";
-const WEBHOOK_SECRET = "YOUR-WEBHOOK-SECRET";
-
-function createTrigger() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet();
-  ScriptApp.newTrigger('onFormSubmit')
-    .forSpreadsheet(sheet)
-    .onFormSubmit()
-    .create();
+function checkForNewLeads() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var lastRow = sheet.getLastRow();
+  
+  var properties = PropertiesService.getScriptProperties();
+  var lastProcessedRow = parseInt(properties.getProperty('lastProcessedRow') || '1');
+  
+  if (lastRow <= lastProcessedRow) {
+    return; // no new rows
+  }
+  
+  for (var row = lastProcessedRow + 1; row <= lastRow; row++) {
+    var rowData = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
+    // Assuming columns: A=Name, B=Phone, C=Email, D=Company, E=Source Ad
+    var name = rowData[0];
+    var phone = rowData[1];
+    var email = rowData[2];
+    var company = rowData[3];
+    var source_ad = rowData[4];
+    
+    if (!phone) continue;
+    
+    var payload = {
+      name: name,
+      phone: String(phone),
+      email: email,
+      company: company,
+      source_ad: source_ad,
+      sheet_row: row
+    };
+    
+    var options = {
+      method: 'POST',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      headers: { 'X-Webhook-Secret': 'YOUR-WEBHOOK-SECRET' },
+      muteHttpExceptions: true
+    };
+    
+    UrlFetchApp.fetch('https://YOUR-RAILWAY-DOMAIN.up.railway.app/api/webhooks/new-lead', options);
+  }
+  
+  properties.setProperty('lastProcessedRow', lastRow.toString());
 }
 
-function onFormSubmit(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const range = e.range;
-  const row = range.getRow();
-  
-  // Assuming columns: A=Name, B=Phone, C=Email, D=Company, E=Source Ad
-  const name = sheet.getRange(row, 1).getValue();
-  const phone = sheet.getRange(row, 2).getValue();
-  const email = sheet.getRange(row, 3).getValue();
-  const company = sheet.getRange(row, 4).getValue();
-  const source_ad = sheet.getRange(row, 5).getValue();
-
-  const payload = {
-    name: name,
-    phone: phone,
-    email: email,
-    company_name: company,
-    source_ad: source_ad,
-    sheet_row_index: row
-  };
-
-  const options = {
-    method: 'post',
-    contentType: 'application/json',
-    headers: {
-      'X-Webhook-Secret': WEBHOOK_SECRET
-    },
-    payload: JSON.stringify(payload)
-  };
-
-  try {
-    UrlFetchApp.fetch(WEBHOOK_URL, options);
-  } catch (err) {
-    console.error("Webhook failed:", err);
+function setupTimeDrivenTrigger() {
+  // Delete old triggers first
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
   }
+  
+  // Create new time-driven trigger, runs every minute
+  ScriptApp.newTrigger('checkForNewLeads')
+    .timeBased()
+    .everyMinutes(1)
+    .create();
 }
