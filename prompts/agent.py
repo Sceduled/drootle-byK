@@ -137,8 +137,13 @@ UNQUALIFIED = not enough info yet
 
 conv_status values:
 new / qualifying / stalled / awaiting_call /
-post_call / fomo / cold / closed / upsell / 
-archived / lost
+post_call / fomo / cold / closed / upsell /
+archived / lost / call_attempted / call_partial /
+call_qualified
+
+IMPORTANT: If the current conv_status is "call_attempted", "call_partial", or "call_qualified",
+do NOT change it unless the lead has explicitly responded via chat and the conversation
+has meaningfully progressed. In that case, set it to "qualifying".
 """
 
 def get_sequence_message(key: str, project=None, **kwargs) -> str:

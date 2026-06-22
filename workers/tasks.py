@@ -129,7 +129,7 @@ async def fire_outbound_call(ctx, lead_id: str):
         
         # Update DB
         lead.call_attempted = True
-        lead.call_attempted_at = func.now()
+        lead.call_attempted_at = datetime.now(timezone.utc)
         lead.conv_status = "call_attempted"
         await db.commit()
         
@@ -162,10 +162,21 @@ async def send_no_pickup_whatsapp(ctx, lead_id: str):
         lead = result.scalars().first()
         if not lead:
             return
-            
+
+        # Guard: if lead already replied via WhatsApp, skip the no-pickup message
+        existing_msgs = await db.execute(
+            select(Conversation).where(
+                Conversation.lead_id == lead.id,
+                Conversation.role == "user"
+            ).limit(1)
+        )
+        if existing_msgs.scalar():
+            logger.info(f"[{lead_id}] Lead already has user conversation — skipping no pickup message")
+            return
+
         name = lead.name or "there"
         msg = f"Hi {name}, I tried calling you just now but couldn't get through. Got 2 minutes to chat here? I can walk you through the details and answer any questions you have."
-        
+
         success = await send_message(lead.phone, msg)
         if success:
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
@@ -175,25 +186,47 @@ async def send_no_pickup_whatsapp(ctx, lead_id: str):
 
 @safe_task
 async def send_dropped_call_whatsapp(ctx, lead_id: str):
+    """For calls < 30s (dropped before any real conversation)."""
     logger.info(f"[{lead_id}] Sending dropped call whatsapp")
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         if not lead:
             return
-            
+
         name = lead.name or "there"
-        if lead.call_partial_data:
-            msg = f"Hi {name}, looks like we got cut off earlier. No worries — just text me back here whenever you're free and I'll pick up from where we left off."
-        else:
-            msg = f"Hi {name}, we got disconnected just now. Happy to continue here over chat whenever you're ready."
-            
+        msg = f"Hi {name}, we got disconnected just now. Happy to continue here over chat whenever you're ready."
+
         success = await send_message(lead.phone, msg)
         if success:
             db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
             lead.conv_status = "qualifying"
             await db.commit()
             await log_stage_change(str(lead.id), "call_attempted", "qualifying", "system", "Sent dropped call message", db)
+
+@safe_task
+async def send_partial_call_whatsapp(ctx, lead_id: str):
+    """For completed calls >= 30s where not all 5 fields were captured."""
+    logger.info(f"[{lead_id}] Sending partial call whatsapp")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead:
+            return
+
+        name = lead.name or "there"
+        msg = (
+            f"Hi {name}, thanks for speaking with me earlier. "
+            f"I wanted to follow up here so we can finish up — "
+            f"just a couple more quick questions and I can share the full project details with you."
+        )
+
+        success = await send_message(lead.phone, msg)
+        if success:
+            db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+            lead.conv_status = "qualifying"
+            await db.commit()
+            await log_stage_change(str(lead.id), "call_attempted", "qualifying", "system", "Sent partial call follow-up message", db)
 
 @safe_task
 async def dispatch_voice_call(ctx, lead_id: str):
@@ -1268,6 +1301,13 @@ async def generate_lead_summary(ctx, lead_id: str):
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     functions = [
+        # Call-first flow tasks
+        fire_outbound_call,
+        check_call_outcome,
+        send_no_pickup_whatsapp,
+        send_dropped_call_whatsapp,
+        send_partial_call_whatsapp,
+        # Core tasks
         send_opening_message,
         send_qual_nudge,
         process_buffered_message,

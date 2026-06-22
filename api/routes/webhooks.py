@@ -137,20 +137,29 @@ async def receive_bolna_outcome(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    signature = request.headers.get("X-Bolna-Signature")
-    if not signature:
-        raise HTTPException(status_code=401, detail="Missing signature")
-        
+    signature = request.headers.get("X-Bolna-Signature", "")
     body = await request.body()
-    expected_sig = hmac.new(
-        settings.BOLNA_WEBHOOK_SECRET.encode(),
-        body,
-        hashlib.sha256
-    ).hexdigest()
-    
-    if not hmac.compare_digest(expected_sig, signature):
-        logger.warning("Invalid Bolna webhook signature")
-        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    # Allow bypass when no secret configured (local dev / testing)
+    if settings.BOLNA_WEBHOOK_SECRET:
+        # Strip sha256= prefix if Bolna sends it
+        if signature.startswith("sha256="):
+            signature = signature[7:]
+
+        if not signature:
+            raise HTTPException(status_code=401, detail="Missing signature")
+
+        expected_sig = hmac.new(
+            settings.BOLNA_WEBHOOK_SECRET.encode(),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+
+        if not hmac.compare_digest(signature.lower(), expected_sig.lower()):
+            logger.warning("Invalid Bolna webhook signature")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+    else:
+        logger.warning("BOLNA_WEBHOOK_SECRET not set — skipping signature verification")
 
     payload = await request.json()
     call_id = payload.get("call_id")
@@ -169,13 +178,17 @@ async def receive_bolna_outcome(
         return {"status": "ignored", "reason": "lead not found"}
         
     arq_pool = await get_arq_pool()
-    
+
+    # Always store duration
+    if duration:
+        lead.call_duration_seconds = int(duration)
+
     if status in ("no-answer", "busy", "failed"):
         lead.call_outcome = "no_pickup"
         lead.conv_status = "call_attempted"
         await db.commit()
         await arq_pool.enqueue_job("send_no_pickup_whatsapp", lead_id)
-        
+
     elif status == "completed":
         if duration < 30:
             lead.call_outcome = "dropped_early"
@@ -183,22 +196,22 @@ async def receive_bolna_outcome(
             await db.commit()
             await arq_pool.enqueue_job("send_dropped_call_whatsapp", lead_id)
         else:
-            # We need to extract the data using GPT
+            # Extract qualification data from transcript
             from services.gpt import extract_call_transcript_data
             from services.notifications import notify_sales_qualification
-            
+
             extracted = await extract_call_transcript_data(transcript)
             lead.call_partial_data = extracted
-            
-            # Check if fully qualified
+
+            # Check if fully qualified (all 5 fields present)
             is_qualified = bool(
-                extracted.get("location") and 
-                extracted.get("budget") and 
-                extracted.get("bhk") and 
-                extracted.get("timeline") and 
+                extracted.get("location") and
+                extracted.get("budget") and
+                extracted.get("bhk") and
+                extracted.get("timeline") and
                 extracted.get("purpose")
             )
-            
+
             if is_qualified:
                 lead.call_outcome = "qualified"
                 lead.call_qualified = True
@@ -209,7 +222,7 @@ async def receive_bolna_outcome(
                 lead.call_outcome = "partial"
                 lead.conv_status = "qualifying"
                 await db.commit()
-                await arq_pool.enqueue_job("send_dropped_call_whatsapp", lead_id)
+                await arq_pool.enqueue_job("send_partial_call_whatsapp", lead_id)
 
     return {"status": "processed"}
 

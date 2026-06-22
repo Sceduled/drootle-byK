@@ -183,7 +183,11 @@ Conversation:
 async def extract_call_transcript_data(transcript: str) -> dict:
     if not transcript:
         return {}
-        
+
+    # Truncate to avoid hitting token limits — keep the most recent part
+    if len(transcript) > 3000:
+        transcript = transcript[-3000:]
+
     prompt = f"""Extract real estate qualification details from the following call transcript.
 Return ONLY valid JSON with no markdown formatting.
 If a field is not explicitly mentioned or confirmed, set it to null.
@@ -204,13 +208,16 @@ JSON Output:
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=200,
+            max_tokens=500,
             temperature=0.1
         )
         content = response.choices[0].message.content.strip()
         if content.startswith("```json"):
             content = content[7:-3].strip()
+        elif content.startswith("```"):
+            content = content[3:-3].strip()
         return json.loads(content)
     except Exception as e:
         logger.error(f"Failed to extract call data: {e}")
+        return {}
         return {}

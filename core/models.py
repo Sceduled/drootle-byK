@@ -63,6 +63,7 @@ class Lead(Base):
     call_outcome = Column(Text, nullable=True)
     call_qualified = Column(Boolean, default=False, nullable=False, server_default=text("false"))
     call_partial_data = Column(JSONB, nullable=True)
+    call_duration_seconds = Column(Integer, nullable=True)
 
     # Lifecycle & Sequences
     opted_out = Column(Boolean, default=False, nullable=False, server_default=text("false"))

@@ -373,6 +373,10 @@ export default function LeadDetail() {
                     <p className="text-muted text-xs mb-1">Attempted</p>
                     <p className="text-foreground-muted font-medium">{lead.call_attempted_at ? moment(lead.call_attempted_at).format('MMM D, h:mm A') : '—'}</p>
                   </div>
+                  <div>
+                    <p className="text-muted text-xs mb-1">Duration</p>
+                    <p className="text-foreground-muted font-medium">{lead.call_duration_seconds != null ? `${lead.call_duration_seconds}s` : '—'}</p>
+                  </div>
                 </div>
                 {lead.call_partial_data && Object.keys(lead.call_partial_data).length > 0 && (
                   <div className="pt-3 border-t border-border/50 mt-3">
