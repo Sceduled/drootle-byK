@@ -358,6 +358,39 @@ export default function LeadDetail() {
         </div>
 
         <div className="p-6 overflow-y-auto space-y-8 flex-1">
+          {lead.call_attempted && (
+            <div>
+              <h3 className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Phone size={14} /> Call History
+              </h3>
+              <div className="space-y-4 text-sm bg-card-hover p-4 rounded-lg border border-border">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-muted text-xs mb-1">Outcome</p>
+                    <p className="text-foreground-muted font-medium capitalize">{(lead.call_outcome || 'Awaiting...').replace('_', ' ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted text-xs mb-1">Attempted</p>
+                    <p className="text-foreground-muted font-medium">{lead.call_attempted_at ? moment(lead.call_attempted_at).format('MMM D, h:mm A') : '—'}</p>
+                  </div>
+                </div>
+                {lead.call_partial_data && Object.keys(lead.call_partial_data).length > 0 && (
+                  <div className="pt-3 border-t border-border/50 mt-3">
+                    <p className="text-muted text-xs mb-2">Data Captured</p>
+                    <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                      {Object.entries(lead.call_partial_data).map(([k, v]) => (
+                        <div key={k} className="flex flex-col">
+                          <span className="text-muted text-[10px] uppercase tracking-wider">{k}</span>
+                          <span className="text-foreground-muted text-xs font-medium">{v || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div>
             <h3 className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-4">Company Details</h3>
             <div className="space-y-4">

@@ -103,11 +103,115 @@ async def new_lead(
     if is_new:
         try:
             arq_pool = await get_arq_pool()
-            await arq_pool.enqueue_job('send_opening_message', str(lead.id))
+            from workers.tasks import is_within_calling_hours
+            from datetime import datetime, timedelta
+            import zoneinfo
+            
+            if is_within_calling_hours():
+                await arq_pool.enqueue_job(
+                    "fire_outbound_call",
+                    str(lead.id),
+                    _job_id=f"call_{lead.id}"
+                )
+            else:
+                ist = zoneinfo.ZoneInfo("Asia/Kolkata")
+                now = datetime.now(ist)
+                tomorrow_7am = (now + timedelta(days=1)).replace(
+                    hour=7, minute=0, second=0, microsecond=0
+                )
+                delay = tomorrow_7am - now
+                await arq_pool.enqueue_job(
+                    "fire_outbound_call",
+                    str(lead.id),
+                    _defer_by=delay,
+                    _job_id=f"call_{lead.id}"
+                )
         except Exception as e:
             logger.error(f"Failed to enqueue ARQ job for lead_id: {lead.id}. Error: {e}")
 
     return {"status": "received", "lead_id": str(lead.id)}
+
+
+@router.post("/bolna-call-outcome")
+async def receive_bolna_outcome(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    signature = request.headers.get("X-Bolna-Signature")
+    if not signature:
+        raise HTTPException(status_code=401, detail="Missing signature")
+        
+    body = await request.body()
+    expected_sig = hmac.new(
+        settings.BOLNA_WEBHOOK_SECRET.encode(),
+        body,
+        hashlib.sha256
+    ).hexdigest()
+    
+    if not hmac.compare_digest(expected_sig, signature):
+        logger.warning("Invalid Bolna webhook signature")
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    payload = await request.json()
+    call_id = payload.get("call_id")
+    status = payload.get("status")
+    duration = payload.get("duration_seconds", 0)
+    user_data = payload.get("user_data", {})
+    lead_id = user_data.get("lead_id")
+    transcript = payload.get("transcript", "")
+    
+    if not lead_id:
+        return {"status": "ignored", "reason": "no lead_id"}
+        
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalars().first()
+    if not lead:
+        return {"status": "ignored", "reason": "lead not found"}
+        
+    arq_pool = await get_arq_pool()
+    
+    if status in ("no-answer", "busy", "failed"):
+        lead.call_outcome = "no_pickup"
+        lead.conv_status = "call_attempted"
+        await db.commit()
+        await arq_pool.enqueue_job("send_no_pickup_whatsapp", lead_id)
+        
+    elif status == "completed":
+        if duration < 30:
+            lead.call_outcome = "dropped_early"
+            lead.conv_status = "qualifying"
+            await db.commit()
+            await arq_pool.enqueue_job("send_dropped_call_whatsapp", lead_id)
+        else:
+            # We need to extract the data using GPT
+            from services.gpt import extract_call_transcript_data
+            from services.notifications import notify_sales_qualification
+            
+            extracted = await extract_call_transcript_data(transcript)
+            lead.call_partial_data = extracted
+            
+            # Check if fully qualified
+            is_qualified = bool(
+                extracted.get("location") and 
+                extracted.get("budget") and 
+                extracted.get("bhk") and 
+                extracted.get("timeline") and 
+                extracted.get("purpose")
+            )
+            
+            if is_qualified:
+                lead.call_outcome = "qualified"
+                lead.call_qualified = True
+                lead.conv_status = "awaiting_call"
+                await db.commit()
+                await notify_sales_qualification(lead)
+            else:
+                lead.call_outcome = "partial"
+                lead.conv_status = "qualifying"
+                await db.commit()
+                await arq_pool.enqueue_job("send_dropped_call_whatsapp", lead_id)
+
+    return {"status": "processed"}
 
 
 @router.get("/whatsapp")

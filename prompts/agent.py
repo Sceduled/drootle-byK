@@ -37,8 +37,27 @@ async def get_system_prompt(lead_summary: str, lead, db) -> str:
     questions_text = "\n".join(
         [f"{i+1}. {q}" for i, q in enumerate(QUALIFICATION_QUESTIONS)]
     )
+    call_context_str = ""
+    if getattr(lead, "call_partial_data", None):
+        cd = lead.call_partial_data
+        call_context_str = f"""
+CALL CONTEXT — ALREADY CAPTURED:
+The lead had a brief call before this chat.
+Fields already confirmed on the call:
+  Location: {cd.get('location', 'not captured')}
+  Budget: {cd.get('budget', 'not captured')}
+  BHK: {cd.get('bhk', 'not captured')}
+  Timeline: {cd.get('timeline', 'not captured')}
+  Purpose: {cd.get('purpose', 'not captured')}
+
+Only ask for fields showing 'not captured'.
+Do not re-ask anything already confirmed above.
+"""
+
     return f"""
 {persona}
+
+{call_context_str}
 
 MESSAGING STYLE RULES:
 - Use simple plain English. No corporate words.

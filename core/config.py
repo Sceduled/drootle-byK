@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     VOICE_TRIGGER: str = "manual"  # "manual", "no_reply_2h", "reminder"
     BOLNA_API_KEY: str = ""
     BOLNA_AGENT_ID: str = ""
+    BOLNA_WEBHOOK_SECRET: str = ""
     PIPECAT_SERVER_URL: str = ""
 
     # Railway

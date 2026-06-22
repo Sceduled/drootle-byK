@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import (
     Column, String, Text, Integer, Boolean, DateTime, ForeignKey, Index, text, UniqueConstraint
 )
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
@@ -58,6 +58,11 @@ class Lead(Base):
     last_call_at = Column(DateTime(timezone=True), nullable=True)
     call_count = Column(Integer, default=0)
     call_notes = Column(Text, nullable=True)
+    call_attempted = Column(Boolean, default=False, nullable=False, server_default=text("false"))
+    call_attempted_at = Column(DateTime(timezone=True), nullable=True)
+    call_outcome = Column(Text, nullable=True)
+    call_qualified = Column(Boolean, default=False, nullable=False, server_default=text("false"))
+    call_partial_data = Column(JSONB, nullable=True)
 
     # Lifecycle & Sequences
     opted_out = Column(Boolean, default=False, nullable=False, server_default=text("false"))

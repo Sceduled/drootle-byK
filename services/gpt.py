@@ -179,3 +179,38 @@ Conversation:
 {history_text}
 """
     return await call_gpt_mini(prompt)
+
+async def extract_call_transcript_data(transcript: str) -> dict:
+    if not transcript:
+        return {}
+        
+    prompt = f"""Extract real estate qualification details from the following call transcript.
+Return ONLY valid JSON with no markdown formatting.
+If a field is not explicitly mentioned or confirmed, set it to null.
+
+Fields to extract:
+- location: The specific area or project they are interested in.
+- budget: Their budget in rupees or crores.
+- bhk: The size of property (e.g. 2BHK, 3BHK).
+- timeline: How soon they want to buy.
+- purpose: "self_use" or "investment".
+
+Transcript:
+{transcript}
+
+JSON Output:
+"""
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200,
+            temperature=0.1
+        )
+        content = response.choices[0].message.content.strip()
+        if content.startswith("```json"):
+            content = content[7:-3].strip()
+        return json.loads(content)
+    except Exception as e:
+        logger.error(f"Failed to extract call data: {e}")
+        return {}

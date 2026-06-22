@@ -312,7 +312,14 @@ export default function Leads() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 font-semibold text-foreground-muted group-hover:text-foreground transition-colors">{lead.name || '—'}</td>
+                        <td className="px-6 py-4 font-semibold text-foreground-muted group-hover:text-foreground transition-colors">
+                          <div className="flex items-center gap-2">
+                            {lead.name || '—'}
+                            {lead.call_attempted && (
+                              <Phone size={14} className="text-cyan-500" title="Call Attempted" />
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 text-muted">{lead.company_name || '—'}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2.5 py-1.5 rounded text-[10px] font-semibold tracking-widest uppercase ${STATUS_COLORS[lead.conv_status] || 'bg-card-hover text-muted'}`}>

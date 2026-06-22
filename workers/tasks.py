@@ -10,6 +10,9 @@ from client_config import SEQUENCE_MESSAGES
 from arq.connections import RedisSettings
 from arq.cron import cron
 from sqlalchemy import select, text
+from sqlalchemy.sql import func
+import httpx
+import zoneinfo
 
 from core.config import settings
 from core.database import AsyncSessionLocal
@@ -76,6 +79,121 @@ async def get_project_for_lead(lead, db):
         result = await db.execute(select(Project).where(Project.project_key == lead.project_key))
         return result.scalars().first()
     return None
+
+def is_within_calling_hours() -> bool:
+    ist = zoneinfo.ZoneInfo("Asia/Kolkata")
+    now = datetime.now(ist)
+    return 7 <= now.hour < 22
+
+@safe_task
+async def fire_outbound_call(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Starting fire_outbound_call task")
+    if not settings.BOLNA_API_KEY or not settings.BOLNA_AGENT_ID:
+        logger.error(f"[{lead_id}] Bolna API key or Agent ID missing. Cannot fire call.")
+        return
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead:
+            return
+        
+        if lead.opted_out or lead.call_attempted:
+            logger.info(f"[{lead_id}] Lead opted out or call already attempted. Skipping.")
+            return
+
+        # Fire Bolna call
+        headers = {
+            "Authorization": f"Bearer {settings.BOLNA_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "agent_id": settings.BOLNA_AGENT_ID,
+            "recipient_phone_number": lead.phone,
+            "user_data": {
+                "lead_id": str(lead.id),
+                "lead_name": lead.name or ""
+            }
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post("https://api.bolna.dev/call", json=payload, headers=headers, timeout=10.0)
+                if resp.status_code not in (200, 201):
+                    logger.error(f"[{lead_id}] Bolna API error: {resp.status_code} - {resp.text}")
+                    return
+                logger.info(f"[{lead_id}] Bolna call fired successfully: {resp.text}")
+        except Exception as e:
+            logger.error(f"[{lead_id}] Error calling Bolna API: {e}")
+            return
+        
+        # Update DB
+        lead.call_attempted = True
+        lead.call_attempted_at = func.now()
+        lead.conv_status = "call_attempted"
+        await db.commit()
+        
+        # Schedule check_call_outcome
+        arq_pool = ctx.get('redis')
+        await arq_pool.enqueue_job(
+            "check_call_outcome",
+            lead_id,
+            _defer_by=timedelta(minutes=3),
+            _job_id=f"call_check_{lead_id}"
+        )
+
+@safe_task
+async def check_call_outcome(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Running fallback check_call_outcome")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead:
+            return
+            
+        if lead.call_attempted and not lead.call_outcome:
+            logger.warning(f"[{lead_id}] Fallback check: call_outcome is still null. Bolna webhook may have failed or delayed.")
+
+@safe_task
+async def send_no_pickup_whatsapp(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Sending no pickup whatsapp")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead:
+            return
+            
+        name = lead.name or "there"
+        msg = f"Hi {name}, I tried calling you just now but couldn't get through. Got 2 minutes to chat here? I can walk you through the details and answer any questions you have."
+        
+        success = await send_message(lead.phone, msg)
+        if success:
+            db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+            lead.conv_status = "qualifying"
+            await db.commit()
+            await log_stage_change(str(lead.id), "call_attempted", "qualifying", "system", "Sent no pickup message", db)
+
+@safe_task
+async def send_dropped_call_whatsapp(ctx, lead_id: str):
+    logger.info(f"[{lead_id}] Sending dropped call whatsapp")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = result.scalars().first()
+        if not lead:
+            return
+            
+        name = lead.name or "there"
+        if lead.call_partial_data:
+            msg = f"Hi {name}, looks like we got cut off earlier. No worries — just text me back here whenever you're free and I'll pick up from where we left off."
+        else:
+            msg = f"Hi {name}, we got disconnected just now. Happy to continue here over chat whenever you're ready."
+            
+        success = await send_message(lead.phone, msg)
+        if success:
+            db.add(Conversation(lead_id=lead.id, role="assistant", content=msg))
+            lead.conv_status = "qualifying"
+            await db.commit()
+            await log_stage_change(str(lead.id), "call_attempted", "qualifying", "system", "Sent dropped call message", db)
 
 @safe_task
 async def dispatch_voice_call(ctx, lead_id: str):
