@@ -34,7 +34,7 @@ async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession
     result = await db.execute(select(Project).where(Project.project_key == "whitefield_flat"))
     project = result.scalars().first()
     
-    opening_message = f"Hi {name}, I tried calling you just now but couldn't get through. I am here to ask you few questions regarding your requirement  can I take two minutes of your time?"
+    opening_message = f"Hi {name}, Priya here from {project.project_name} in {project.area}. I tried calling you just now but couldn't get through. I just need a few details about your requirements. Can I get 2 mins of your time?"
     
     ai_msg = SimulationMessage(
         session_id=session.id,

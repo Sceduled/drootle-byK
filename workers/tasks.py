@@ -174,8 +174,18 @@ async def send_no_pickup_whatsapp(ctx, lead_id: str):
             logger.info(f"[{lead_id}] Lead already has user conversation — skipping no pickup message")
             return
 
+        # Get project details for personalized message
+        from core.models import Project
+        project = None
+        if lead.project_key:
+            proj_res = await db.execute(select(Project).where(Project.project_key == lead.project_key))
+            project = proj_res.scalars().first()
+            
+        proj_name = project.project_name if project else "our properties"
+        area = project.area if project else "your area"
+        
         name = lead.name or "there"
-        msg = f"Hi {name}, I tried calling you just now but couldn't get through. I am here to ask you few questions regarding your requirement  can I take two minutes of your time?"
+        msg = f"Hi {name}, Priya here from {proj_name} in {area}. I tried calling you just now but couldn't get through. I just need a few details about your requirements. Can I get 2 mins of your time?"
 
         success = await send_message(lead.phone, msg)
         if success:
