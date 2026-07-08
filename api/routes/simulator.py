@@ -34,9 +34,7 @@ async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession
     result = await db.execute(select(Project).where(Project.project_key == "whitefield_flat"))
     project = result.scalars().first()
     
-    opening_message = get_sequence_message("first_touch", project=project, name=name)
-    if not opening_message:
-        opening_message = f"Hello {name}!"
+    opening_message = f"Hi {name}, I tried calling you just now but couldn't get through. Got 2 minutes to chat here? I can walk you through the details and answer any questions you have."
     
     ai_msg = SimulationMessage(
         session_id=session.id,
