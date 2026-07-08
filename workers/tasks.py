@@ -175,7 +175,7 @@ async def send_no_pickup_whatsapp(ctx, lead_id: str):
             return
 
         name = lead.name or "there"
-        msg = f"Hi {name}, I tried calling you just now but couldn't get through. Got 2 minutes to chat here? I can walk you through the details and answer any questions you have."
+        msg = f"Hi {name}, I tried calling you just now but couldn't get through. I am here to ask you few questions regarding your requirement  can I take two minutes of your time?"
 
         success = await send_message(lead.phone, msg)
         if success:
