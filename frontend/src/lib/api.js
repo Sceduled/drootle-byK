@@ -5,8 +5,12 @@ const api = axios.create({
 });
 
 // Simulator
-export const startSimulation = async (name) => {
-  return await api.post('/simulator/start', { name });
+export const getProjects = async () => {
+  return await api.get('/simulator/projects');
+};
+
+export const startSimulation = async (name, projectKey) => {
+  return await api.post('/simulator/start', { name, project_key: projectKey });
 };
 
 export const getSimulationHistory = async (sessionId) => {

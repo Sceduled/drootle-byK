@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { startSimulation, getSimulationHistory, sendSimulationMessage, exportSimulations } from '../lib/api';
+import { startSimulation, getSimulationHistory, sendSimulationMessage, exportSimulations, getProjects } from '../lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send, User, Bot, RefreshCw, Loader2, Download,
@@ -43,6 +43,8 @@ function VoiceSimulator() {
 function ChatSimulator() {
   const [sessionId, setSessionId] = useState(localStorage.getItem('sim_session_id'));
   const [name, setName] = useState('');
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,7 +54,18 @@ function ChatSimulator() {
   const messagesEndRef = useRef(null);
 
   useEffect(() => { if (sessionId) loadHistory(); }, [sessionId]);
+  useEffect(() => { loadProjects(); }, []);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const loadProjects = async () => {
+    try {
+      const res = await getProjects();
+      setProjects(res.data);
+      if (res.data.length > 0) setSelectedProject(res.data[0].project_key);
+    } catch (e) {
+      console.error('Failed to load projects', e);
+    }
+  };
 
   const loadHistory = async () => {
     try {
@@ -69,7 +82,7 @@ function ChatSimulator() {
     if (!name.trim()) return;
     setStarting(true);
     try {
-      const res = await startSimulation(name);
+      const res = await startSimulation(name, selectedProject);
       setSessionId(res.data.session_id);
       localStorage.setItem('sim_session_id', res.data.session_id);
       setMessages([{ role: 'assistant', content: res.data.message }]);
@@ -154,6 +167,19 @@ function ChatSimulator() {
                 className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm focus:outline-none focus:border-emerald-400 transition-colors"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-widest mb-2">Select Project</label>
+              <select
+                value={selectedProject}
+                onChange={e => setSelectedProject(e.target.value)}
+                className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm focus:outline-none focus:border-emerald-400 transition-colors appearance-none"
+                required
+              >
+                {projects.map(p => (
+                  <option key={p.project_key} value={p.project_key}>{p.project_name}</option>
+                ))}
+              </select>
             </div>
             <button type="submit" disabled={starting}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-foreground bg-foreground/5 hover:bg-foreground/10 border border-border hover:border-foreground/20 transition-all group">

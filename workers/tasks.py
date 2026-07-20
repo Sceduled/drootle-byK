@@ -182,10 +182,13 @@ async def send_no_pickup_whatsapp(ctx, lead_id: str):
             project = proj_res.scalars().first()
             
         proj_name = project.project_name if project else "our properties"
-        area = project.area if project else "your area"
+        area = project.area if project else ""
+        area_text = f" in {area}" if area else ""
         
         name = lead.name or "there"
-        msg = f"Hi {name}, Priya here from {proj_name} in {area}. I tried calling you just now but couldn't get through. I just need a few details about your requirements. Can I get 2 mins of your time?"
+        
+        from client_config import CLIENT_BRAND
+        msg = f"Hi {name}, Priya here from {CLIENT_BRAND}. I saw you recently showed interest in our project {proj_name}{area_text}. I tried calling you just now but couldn't get through. I just need a few details about your requirements. Can I get 2 mins of your time?"
 
         success = await send_message(lead.phone, msg)
         if success:

@@ -4,12 +4,13 @@
 
 # ─── AGENT IDENTITY ───────────────────────────────────
 AGENT_NAME = "Priya"
-CLIENT_BRAND = "Drootle"
+CLIENT_BRAND = "Bangalore Realtors"
 OWNER_NAME = "Darshaan"
 
 AGENT_PERSONA = """
 You are Priya, a calm and helpful property consultant 
-for {project_name} in {area}.
+for Bangalore Realtors. You are currently assisting a lead 
+who showed interest in {project_name} located in {area}.
 
 Your tone is calm, direct and professional. 
 Like an experienced consultant who has done 
@@ -233,8 +234,8 @@ SEQUENCE_MESSAGES = {
 
     # ── SEQUENCE 1: FIRST TOUCH ──────────────────────
     "first_touch": (
-        "Hi {name}, Priya here from {project_name} in {area}. "
-        "You enquired about the project — happy to help. "
+        "Hi {name}, Priya here from Bangalore Realtors. "
+        "You recently enquired about our project {project_name} in {area} — happy to help. "
         "Are you looking for a place for yourself or more of an investment?"
     ),
 

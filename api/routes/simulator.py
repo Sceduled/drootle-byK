@@ -14,13 +14,22 @@ import csv
 from core.database import get_db
 from core.models import SimulationSession, SimulationMessage, Lead
 from services.gpt import process_message, generate_summary_from_history_text
-from client_config import SEQUENCE_MESSAGES
+from client_config import SEQUENCE_MESSAGES, CLIENT_BRAND
 
 router = APIRouter()
+
+@router.get("/projects")
+async def get_projects(db: AsyncSession = Depends(get_db)):
+    from core.models import Project
+    result = await db.execute(select(Project).order_by(Project.project_name))
+    projects = result.scalars().all()
+    return [{"project_key": p.project_key, "project_name": p.project_name, "area": p.area} for p in projects]
 
 @router.post("/start")
 async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession = Depends(get_db)):
     name = payload.get("name", "Test Lead")
+    
+    project_key = payload.get("project_key")
     
     session = SimulationSession(name=name)
     db.add(session)
@@ -30,11 +39,20 @@ async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession
     from prompts.agent import get_sequence_message
     from core.models import Project
     
-    # Default simulator to whitefield_flat project
-    result = await db.execute(select(Project).where(Project.project_key == "whitefield_flat"))
-    project = result.scalars().first()
+    project = None
+    if project_key:
+        result = await db.execute(select(Project).where(Project.project_key == project_key))
+        project = result.scalars().first()
+    else:
+        # Default simulator to whitefield_flat project if not provided
+        result = await db.execute(select(Project).where(Project.project_key == "whitefield_flat"))
+        project = result.scalars().first()
+        
+    proj_name = project.project_name if project else "our properties"
+    area = project.area if project else ""
+    area_text = f" in {area}" if area else ""
     
-    opening_message = f"Hi {name}, Priya here from {project.project_name} in {project.area}. I tried calling you just now but couldn't get through. I just need a few details about your requirements. Can I get 2 mins of your time?"
+    opening_message = f"Hi {name}, Priya here from {CLIENT_BRAND}. I saw you recently showed interest in our project {proj_name}{area_text}. I tried calling you just now but couldn't get through. I just need a few details about your requirements. Can I get 2 mins of your time?"
     
     ai_msg = SimulationMessage(
         session_id=session.id,
