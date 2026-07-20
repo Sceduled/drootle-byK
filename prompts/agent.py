@@ -1,7 +1,7 @@
 from client_config import (
     AGENT_NAME, CLIENT_BRAND, OWNER_NAME,
     AGENT_PERSONA, QUALIFICATION_QUESTIONS,
-    SEQUENCE_MESSAGES
+    SEQUENCE_TEMPLATES
 )
 from core.config import settings
 
@@ -146,8 +146,9 @@ do NOT change it unless the lead has explicitly responded via chat and the conve
 has meaningfully progressed. In that case, set it to "qualifying".
 """
 
-def get_sequence_message(key: str, project=None, **kwargs) -> str:
-    template = SEQUENCE_MESSAGES.get(key, "")
+def get_sequence_message(key: str, project=None, **kwargs) -> tuple[str, str, list]:
+    template_data = SEQUENCE_TEMPLATES.get(key, {})
+    template = template_data.get("fallback_text", "")
     
     project_name = project.project_name if project else "our properties"
     area = project.area if project else "your area"
@@ -167,7 +168,7 @@ def get_sequence_message(key: str, project=None, **kwargs) -> str:
         if k not in kwargs or not kwargs[k]:
             kwargs[k] = v
 
-    return template.format(
+    formatted_text = template.format(
         project_name=project_name,
         area=area,
         price_range=price_range,
@@ -176,3 +177,21 @@ def get_sequence_message(key: str, project=None, **kwargs) -> str:
         property_type=property_type,
         **kwargs
     )
+    
+    # Extract params list in the order defined by SEQUENCE_TEMPLATES variables
+    all_vars = {
+        "project_name": project_name,
+        "area": area,
+        "price_range": price_range,
+        "key_features": key_features,
+        "bhk_or_size": bhk_or_size,
+        "property_type": property_type,
+        **kwargs
+    }
+    
+    parameters = []
+    for var_name in template_data.get("variables", []):
+        parameters.append(str(all_vars.get(var_name, "")))
+        
+    template_name = template_data.get("template_name", "")
+    return formatted_text, template_name, parameters

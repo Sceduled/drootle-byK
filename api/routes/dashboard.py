@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from client_config import SEQUENCE_MESSAGES
+from client_config import SEQUENCE_TEMPLATES
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -407,8 +407,8 @@ async def get_sequences(db: AsyncSession = Depends(get_db)):
         }
         keys = SEQ_MAPPING.get(s.sequence_number, [])
         for k in keys:
-            if k in SEQUENCE_MESSAGES:
-                s_dict["templates"].append({"key": k, "content": SEQUENCE_MESSAGES[k]})
+            if k in SEQUENCE_TEMPLATES:
+                s_dict["templates"].append({"key": k, "content": SEQUENCE_TEMPLATES[k]["fallback_text"]})
         result_list.append(s_dict)
         
     return result_list

@@ -14,7 +14,7 @@ import csv
 from core.database import get_db
 from core.models import SimulationSession, SimulationMessage, Lead
 from services.gpt import process_message, generate_summary_from_history_text
-from client_config import SEQUENCE_MESSAGES, CLIENT_BRAND
+from client_config import SEQUENCE_TEMPLATES, CLIENT_BRAND
 
 router = APIRouter()
 

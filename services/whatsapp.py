@@ -26,6 +26,18 @@ class WhatsAppClient:
             logger.error(f"Unknown WhatsApp provider: {self.provider}")
             return False
 
+    async def send_template_message(self, phone: str, template_name: str, parameters: list) -> bool:
+        if self.provider in ("meta", "vobiz"):
+            return await self._send_meta_template(phone, template_name, parameters)
+        elif self.provider in ("openwa", "waha"):
+            # WAHA doesn't strictly need templates, but we can fallback to text if we had the text.
+            # Since we only have template parameters here, we'll just log an error or send a dummy text.
+            logger.error("send_template_message is not supported for WAHA provider directly without fallback text.")
+            return False
+        else:
+            logger.error(f"Unknown WhatsApp provider: {self.provider}")
+            return False
+
     async def _send_meta(self, phone: str, message: str) -> bool:
         url = f"https://graph.facebook.com/v18.0/{self.meta_phone_id}/messages"
         headers = {
@@ -45,6 +57,41 @@ class WhatsAppClient:
             }
         }
         return await self._execute_with_retry(url, headers, payload, "meta")
+
+    async def _send_meta_template(self, phone: str, template_name: str, parameters: list) -> bool:
+        url = f"https://graph.facebook.com/v18.0/{self.meta_phone_id}/messages"
+        # If using vobiz endpoint specifically, we can use their API instead if configured, 
+        # but the prompt said Vobiz uses the Meta Cloud API structure if WABA ID/Token is provided.
+        headers = {
+            "Authorization": f"Bearer {self.meta_token}",
+            "Content-Type": "application/json"
+        }
+        
+        meta_phone = phone.lstrip('+')
+        
+        # Build components
+        components = []
+        if parameters:
+            # Map simple list of strings to Meta's parameters list
+            param_list = [{"type": "text", "text": str(p)} for p in parameters]
+            components.append({
+                "type": "body",
+                "parameters": param_list
+            })
+            
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": meta_phone,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {
+                    "code": "en"
+                },
+                "components": components
+            }
+        }
+        return await self._execute_with_retry(url, headers, payload, "meta_template")
 
     async def _send_waha(self, phone: str, message: str) -> bool:
         """Send via WAHA (WhatsApp HTTP API) - correct API format"""
@@ -94,3 +141,6 @@ _client = WhatsAppClient()
 
 async def send_message(phone: str, message: str) -> bool:
     return await _client.send_message(phone, message)
+
+async def send_template_message(phone: str, template_name: str, parameters: list) -> bool:
+    return await _client.send_template_message(phone, template_name, parameters)

@@ -405,6 +405,17 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
                 logger.info(f"Unknown inbound number {norm_phone}, ignoring.")
                 return
 
+            if combined.strip().lower() in ["stop", "stop.", "unsubscribe"]:
+                logger.info(f"[{lead.id}] User requested opt-out.")
+                from utils.stage_logger import log_stage_change
+                old_status = lead.conv_status
+                lead.conv_status = "lost"
+                await log_stage_change(str(lead.id), old_status, "lost", "system", "User opted out (STOP)", db)
+                await db.commit()
+                target_jid = reply_to_jid or norm_phone
+                await wa_send(target_jid, "You have been unsubscribed. You will not receive any further messages.")
+                return
+
             # Fetch history
             result = await db.execute(
                 select(Conversation)
