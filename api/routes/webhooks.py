@@ -155,6 +155,9 @@ async def demo_new_lead(
     is_new = False
     if lead:
         logger.info(f"Existing lead found in demo, resuming. lead_id: {lead.id}")
+        lead.name = payload.name
+        lead.company_name = payload.company
+        lead.email = payload.email
         lead.call_attempted = False
         lead.opted_out = False
         await db.commit()
