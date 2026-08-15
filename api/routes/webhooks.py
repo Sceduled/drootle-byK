@@ -231,14 +231,18 @@ async def receive_bolna_outcome(
         logger.warning("BOLNA_WEBHOOK_SECRET not set — skipping signature verification")
 
     payload = await request.json()
+    logger.info(f"Bolna webhook payload received: {payload}")
     call_id = payload.get("call_id")
     status = payload.get("status")
     duration = payload.get("duration_seconds", 0)
-    user_data = payload.get("user_data", {})
+    
+    # In some Bolna versions, user_data is under agent_config or meta
+    user_data = payload.get("user_data") or payload.get("meta", {}).get("user_data", {})
     lead_id = user_data.get("lead_id")
     transcript = payload.get("transcript", "")
     
     if not lead_id:
+        logger.warning(f"Bolna webhook ignored: no lead_id found in user_data. Payload: {payload}")
         return {"status": "ignored", "reason": "no lead_id"}
         
     result = await db.execute(select(Lead).where(Lead.id == lead_id))
