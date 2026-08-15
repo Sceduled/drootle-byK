@@ -6,7 +6,7 @@ import asyncio
 import functools
 import traceback
 from datetime import datetime, timedelta, timezone
-from client_config import SEQUENCE_MESSAGES
+from client_config import SEQUENCE_TEMPLATES
 from arq.connections import RedisSettings
 from arq.cron import cron
 from sqlalchemy import select, text
