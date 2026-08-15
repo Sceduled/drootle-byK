@@ -161,10 +161,12 @@ async def call_gpt_mini(prompt: str) -> str:
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=50,
+            max_tokens=200,
             temperature=0.1
         )
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content.strip()
+        logger.info(f"call_gpt_mini generated: {content}")
+        return content
     except Exception as e:
         logger.error(f"call_gpt_mini failed: {e}")
         return "UNABLE_TO_PARSE"
