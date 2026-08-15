@@ -232,17 +232,26 @@ async def receive_bolna_outcome(
 
     payload = await request.json()
     logger.info(f"Bolna webhook payload received: {payload}")
-    call_id = payload.get("call_id")
+    call_id = payload.get("id") or payload.get("call_id")
     status = payload.get("status")
-    duration = payload.get("duration_seconds", 0)
     
-    # In some Bolna versions, user_data is under agent_config or meta
-    user_data = payload.get("user_data") or payload.get("meta", {}).get("user_data", {})
-    lead_id = user_data.get("lead_id")
+    # Extract duration from telephony_data if available
+    telephony_data = payload.get("telephony_data", {})
+    duration = telephony_data.get("duration", 0) or payload.get("duration_seconds", 0)
+    
+    # Extract lead_id from context_details
+    recipient_data = payload.get("context_details", {}).get("recipient_data", {})
+    lead_id = recipient_data.get("lead_id")
+    
+    # Fallback to old format if context_details isn't there
+    if not lead_id:
+        user_data = payload.get("user_data") or payload.get("meta", {}).get("user_data", {})
+        lead_id = user_data.get("lead_id")
+
     transcript = payload.get("transcript", "")
     
     if not lead_id:
-        logger.warning(f"Bolna webhook ignored: no lead_id found in user_data. Payload: {payload}")
+        logger.warning(f"Bolna webhook ignored: no lead_id found. Payload: {payload}")
         return {"status": "ignored", "reason": "no lead_id"}
         
     result = await db.execute(select(Lead).where(Lead.id == lead_id))
@@ -252,7 +261,7 @@ async def receive_bolna_outcome(
         
     arq_pool = await get_arq_pool()
 
-    # Always store duration
+    # Always store duration if present
     if duration:
         lead.call_duration_seconds = int(duration)
 
@@ -262,8 +271,9 @@ async def receive_bolna_outcome(
         await db.commit()
         await arq_pool.enqueue_job("send_no_pickup_whatsapp", lead_id)
 
-    elif status == "completed":
-        if duration < 30:
+    elif status in ("completed", "call-disconnected"):
+        # Use transcript length to judge if it was a real call, since Bolna sometimes reports 0.0 duration
+        if len(transcript) < 50 and duration < 30:
             lead.call_outcome = "dropped_early"
             lead.conv_status = "qualifying"
             await db.commit()
