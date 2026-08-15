@@ -9,6 +9,7 @@ import Simulator from './pages/Simulator';
 import LiveContext from './pages/LiveContext';
 import Projects from './pages/Projects';
 import LiveUpdates from './pages/LiveUpdates';
+import ExampleForm from './pages/ExampleForm';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -21,6 +22,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/example-form" element={<ExampleForm />} />
         <Route path="/leads" element={<PrivateRoute><Leads /></PrivateRoute>} />
         <Route path="/leads/:id" element={<PrivateRoute><LeadDetail /></PrivateRoute>} />
         <Route path="/metrics" element={<PrivateRoute><Metrics /></PrivateRoute>} />

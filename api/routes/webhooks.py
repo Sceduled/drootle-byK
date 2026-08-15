@@ -132,6 +132,71 @@ async def new_lead(
     return {"status": "received", "lead_id": str(lead.id)}
 
 
+
+
+@router.post("/demo/new-lead")
+@limiter.limit("10/minute")
+async def demo_new_lead(
+    request: Request,
+    payload: NewLeadPayload,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        norm_phone = normalize_phone(payload.phone)
+    except ValueError as e:
+        logger.warning(f"Invalid phone number '{payload.phone}': {e}")
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+
+    result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
+    lead = result.scalars().first()
+
+    is_new = False
+    if lead:
+        logger.info(f"Existing lead found in demo, resuming. lead_id: {lead.id}")
+    else:
+        is_new = True
+        project_key = await match_project(payload.source_ad, db)
+        needs_assignment = project_key == "unknown"
+
+        lead = Lead(
+            name=payload.name,
+            phone=norm_phone,
+            email=payload.email,
+            company_name=payload.company,
+            source_ad=payload.source_ad,
+            sheet_row_index=payload.sheet_row,
+            project_key=project_key if not needs_assignment else None,
+            needs_project_assignment=needs_assignment
+        )
+        db.add(lead)
+        await db.commit()
+        await db.refresh(lead)
+
+        alert_msg = "⚠ Could not auto-match project for this lead — please assign manually in dashboard." if needs_assignment else None
+        await push_event("lead_created", str(lead.id), {
+            "source": "demo_form", 
+            "needs_project_assignment": needs_assignment,
+            "alert": alert_msg
+        })
+        if needs_assignment:
+            await notify_sales_unmatched_project(lead)
+        logger.info(f"New demo lead created. lead_id: {lead.id}")
+
+    if is_new:
+        try:
+            arq_pool = await get_arq_pool()
+            # Bypassing the curfew check for the demo, fire outbound call instantly
+            logger.info(f"[{lead.id}] Demo form triggered, firing Bolna call instantly.")
+            await arq_pool.enqueue_job(
+                "fire_outbound_call",
+                str(lead.id),
+                _job_id=f"call_{lead.id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to enqueue ARQ job for demo lead_id: {lead.id}. Error: {e}")
+
+    return {"status": "received", "lead_id": str(lead.id)}
+
 @router.post("/bolna-call-outcome")
 async def receive_bolna_outcome(
     request: Request,
