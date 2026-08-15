@@ -1293,20 +1293,27 @@ async def check_fomo_complete(ctx, lead_id: str):
     await arq_pool.enqueue_job('start_reactivation', lead_id, _defer_by=timedelta(days=14))
 
 @safe_task
-async def generate_lead_summary(ctx, lead_id: str):
+async def generate_lead_summary(ctx, lead_id: str, transcript: str = None):
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = result.scalars().first()
         if not lead: return
         
+        history_text = ""
+        if transcript:
+            history_text += f"[VOICE CALL TRANSCRIPT]\n{transcript}\n\n"
+            
         conv_res = await db.execute(
             select(Conversation).where(Conversation.lead_id == lead_id).order_by(Conversation.created_at)
         )
         conversations = conv_res.scalars().all()
         
-        if not conversations: return
+        if conversations:
+            history_text += "[WHATSAPP HISTORY]\n" + "\n".join([f"{msg.role}: {msg.content}" for msg in conversations])
+            
+        if not history_text.strip(): 
+            return
         
-        history_text = "\n".join([f"{msg.role}: {msg.content}" for msg in conversations])
         summary = await generate_summary_from_history_text(history_text)
         if summary and summary != "UNABLE_TO_PARSE":
             lead.ai_summary = summary
