@@ -22,6 +22,7 @@ const SCORE_STYLES = {
 
 const STATUS_COLORS = {
   new: 'bg-card-hover text-foreground-muted border border-border',
+  call_attempted: 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20',
   qualifying: 'bg-purple-500/10 text-purple-300 border border-purple-500/20',
   stalled: 'bg-orange-500/10 text-orange-300 border border-orange-500/20',
   awaiting_call: 'bg-blue-500/10 text-blue-300 border border-blue-500/20',
@@ -35,7 +36,7 @@ const STATUS_COLORS = {
 };
 
 const PIPELINE_STAGES = [
-  { id: 'new', label: 'New Leads', statuses: ['new', 'in_progress', 'qualifying'], color: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/30', text: 'text-blue-400' },
+  { id: 'new', label: 'New Leads', statuses: ['new', 'in_progress', 'qualifying', 'call_attempted'], color: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/30', text: 'text-blue-400' },
   { id: 'qualified', label: 'Qualified', statuses: ['awaiting_call'], color: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/30', text: 'text-purple-400' },
   { id: 'nurturing', label: 'Nurturing', statuses: ['stalled', 'post_call', 'fomo', 'cold'], color: 'from-amber-500/20 to-orange-500/20', border: 'border-amber-500/30', text: 'text-amber-400' },
   { id: 'won', label: 'Closed Won', statuses: ['closed', 'upsell'], color: 'from-emerald-500/20 to-teal-500/20', border: 'border-emerald-500/30', text: 'text-emerald-400' },
