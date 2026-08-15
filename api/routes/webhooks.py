@@ -11,6 +11,8 @@ from arq import create_pool
 from arq.connections import RedisSettings
 import hmac
 import hashlib
+from datetime import datetime, timedelta
+import zoneinfo
 
 from core.config import settings
 from core.database import get_db
@@ -153,6 +155,9 @@ async def demo_new_lead(
     is_new = False
     if lead:
         logger.info(f"Existing lead found in demo, resuming. lead_id: {lead.id}")
+        lead.call_attempted = False
+        lead.opted_out = False
+        await db.commit()
     else:
         is_new = True
         project_key = await match_project(payload.source_ad, db)
@@ -182,18 +187,17 @@ async def demo_new_lead(
             await notify_sales_unmatched_project(lead)
         logger.info(f"New demo lead created. lead_id: {lead.id}")
 
-    if is_new:
-        try:
-            arq_pool = await get_arq_pool()
-            # Bypassing the curfew check for the demo, fire outbound call instantly
-            logger.info(f"[{lead.id}] Demo form triggered, firing Bolna call instantly.")
-            await arq_pool.enqueue_job(
-                "fire_outbound_call",
-                str(lead.id),
-                _job_id=f"call_{lead.id}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to enqueue ARQ job for demo lead_id: {lead.id}. Error: {e}")
+    try:
+        arq_pool = await get_arq_pool()
+        # Bypassing the curfew check for the demo, fire outbound call instantly
+        logger.info(f"[{lead.id}] Demo form triggered, firing Bolna call instantly.")
+        await arq_pool.enqueue_job(
+            "fire_outbound_call",
+            str(lead.id),
+            _job_id=f"call_{lead.id}_{int(datetime.now().timestamp())}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to enqueue ARQ job for demo lead_id: {lead.id}. Error: {e}")
 
     return {"status": "received", "lead_id": str(lead.id)}
 
