@@ -302,13 +302,22 @@ async def receive_bolna_outcome(
                 lead.call_outcome = "qualified"
                 lead.call_qualified = True
                 lead.conv_status = "awaiting_call"
-                await db.commit()
-                await notify_sales_qualification(lead)
             else:
                 lead.call_outcome = "partial"
                 lead.conv_status = "qualifying"
-                await db.commit()
+            
+            bolna_summary = payload.get("summary")
+            if bolna_summary:
+                lead.ai_summary = bolna_summary
+
+            await db.commit()
+            
+            if is_qualified:
+                await notify_sales_qualification(lead)
+            else:
                 await arq_pool.enqueue_job("send_partial_call_whatsapp", lead_id)
+            
+            await arq_pool.enqueue_job("generate_lead_summary", lead_id, transcript)
 
     return {"status": "processed"}
 
