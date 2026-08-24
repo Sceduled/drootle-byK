@@ -52,7 +52,7 @@ async def start_simulation(payload: Dict[str, str] = Body(...), db: AsyncSession
     area = project.area if project else ""
     area_text = f" in {area}" if area else ""
     
-    opening_message = f"Hi {name}, Priya here from {CLIENT_BRAND}. I saw you recently showed interest in our project {proj_name}{area_text}. I tried calling you just now but couldn't get through. I just need a few details about your requirements. Can I get 2 mins of your time?"
+    opening_message = f"Hi {name}, Priya here from {CLIENT_BRAND}. I saw you recently showed interest in our project {proj_name}{area_text}. I just need a few details about your requirements. Can I get 2 mins of your time?"
     
     ai_msg = SimulationMessage(
         session_id=session.id,
