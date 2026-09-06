@@ -4,6 +4,8 @@ Background tasks (e.g. using arq) for async processing.
 import logging
 import asyncio
 import functools
+import json
+import random
 import traceback
 from datetime import datetime, timedelta, timezone
 from client_config import SEQUENCE_TEMPLATES
@@ -1320,15 +1322,129 @@ async def generate_lead_summary(ctx, lead_id: str, transcript: str = None):
             await db.commit()
             logger.info(f"[{lead_id}] Generated AI summary.")
 
+@safe_task
+async def process_bulk_upload_batch(ctx, batch_id: str, rows: list):
+    logger.info(f"[Batch {batch_id}] Starting bulk upload process")
+    redis = ctx.get('redis')
+    
+    status_key = f"bulk_upload:{batch_id}"
+            
+    # Atomic status updater
+    async def atomic_increment(field, amount=1):
+        data = await redis.get(status_key)
+        if data:
+            st = json.loads(data)
+            st[field] = st.get(field, 0) + amount
+            await redis.set(status_key, json.dumps(st), ex=86400)
+            
+    async def add_error(msg):
+        data = await redis.get(status_key)
+        if data:
+            st = json.loads(data)
+            if "errors" not in st:
+                st["errors"] = []
+            st["errors"].append(msg)
+            await redis.set(status_key, json.dumps(st), ex=86400)
+
+    from utils.phone import normalize_phone
+    
+    created_lead_ids = []
+    
+    async with AsyncSessionLocal() as db:
+        for row in rows:
+            name = row.get("name", "")
+            phone_raw = row.get("phone", "")
+            email = row.get("email", "")
+            source_ad = row.get("source_ad", "Bulk Upload")
+            
+            if not phone_raw:
+                await atomic_increment("skipped")
+                await add_error("Missing phone number")
+                continue
+                
+            try:
+                norm_phone = normalize_phone(phone_raw)
+            except ValueError:
+                await atomic_increment("skipped")
+                await add_error(f"Invalid phone format: {phone_raw}")
+                continue
+                
+            # Check if exists
+            result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
+            existing = result.scalars().first()
+            if existing:
+                await atomic_increment("skipped")
+                await add_error(f"Skipped - already exists: {norm_phone}")
+                continue
+                
+            lead = Lead(
+                name=name,
+                phone=norm_phone,
+                email=email,
+                source_ad=source_ad,
+                conv_status="new"
+            )
+            db.add(lead)
+            await db.commit()
+            await db.refresh(lead)
+            
+            created_lead_ids.append(str(lead.id))
+            await atomic_increment("created")
+            
+    logger.info(f"[Batch {batch_id}] Created {len(created_lead_ids)} leads. Scheduling staggered messaging...")
+    
+    # Staggered messaging loop (deferred jobs to avoid blocking worker and hitting job_timeout=60s)
+    cumulative_delay = 0
+    for l_id in created_lead_ids:
+        cumulative_delay += random.randint(30, 90)
+        try:
+            await ctx.get('redis').enqueue_job(
+                "dispatch_bulk_opener", 
+                l_id, 
+                batch_id, 
+                _defer_by=timedelta(seconds=cumulative_delay)
+            )
+        except Exception as e:
+            await add_error(f"Failed to enqueue message for {l_id}: {e}")
+            
+    # Mark batch complete (meaning all are scheduled)
+    data = await redis.get(status_key)
+    if data:
+        st = json.loads(data)
+        st["status"] = "scheduled"
+        await redis.set(status_key, json.dumps(st), ex=86400)
+    
+    logger.info(f"[Batch {batch_id}] Completed bulk upload scheduling process")
+
+@safe_task
+async def dispatch_bulk_opener(ctx, lead_id: str, batch_id: str):
+    logger.info(f"[Batch {batch_id}] Dispatching deferred opener for {lead_id}")
+    # Run the actual opening message task
+    await send_opening_message(ctx, lead_id)
+    
+    # Increment sent counter
+    redis = ctx.get('redis')
+    status_key = f"bulk_upload:{batch_id}"
+    data = await redis.get(status_key)
+    if data:
+        st = json.loads(data)
+        st["sent"] = st.get("sent", 0) + 1
+        
+        # If all sent, mark as completed
+        if st["sent"] >= st.get("created", 0):
+            st["status"] = "completed"
+            
+        await redis.set(status_key, json.dumps(st), ex=86400)
+
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     functions = [
-        # Call-first flow tasks
-        fire_outbound_call,
-        check_call_outcome,
-        send_no_pickup_whatsapp,
-        send_dropped_call_whatsapp,
-        send_partial_call_whatsapp,
+        # Call-first flow tasks (disabled)
+        # fire_outbound_call,
+        # check_call_outcome,
+        # send_no_pickup_whatsapp,
+        # send_dropped_call_whatsapp,
+        # send_partial_call_whatsapp,
         # Core tasks
         send_opening_message,
         send_qual_nudge,
@@ -1375,7 +1491,9 @@ class WorkerSettings:
         start_upsell_sequence,
         upsell_message_1,
         upsell_message_2,
-        upsell_message_3
+        upsell_message_3,
+        process_bulk_upload_batch,
+        dispatch_bulk_opener
     ]
     cron_jobs = [
         cron(check_stalled_leads, hour={0, 6, 12, 18})

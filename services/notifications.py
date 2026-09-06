@@ -12,35 +12,14 @@ logger = logging.getLogger(__name__)
 
 async def notify_sales_qualification(lead) -> None:
     score_emoji = {"HOT": "🔴", "WARM": "🟡", "COLD": "🔵"}.get(lead.lead_score, "⚪")
-    cd = lead.call_partial_data or {}
+    message = f"""{score_emoji} {lead.lead_score or 'UNSCORED'} LEAD — {lead.name or 'Unknown'} | {lead.company_name or 'Unknown'}
 
-    def _get(lead_field, call_key: str) -> str:
-        """Return lead field if set, else fall back to call_partial_data, else 'Not specified'."""
-        if lead_field:
-            if isinstance(lead_field, list):
-                return ", ".join(lead_field)
-            return str(lead_field)
-        val = cd.get(call_key)
-        return str(val) if val else "Not specified"
-
-    budget    = _get(lead.monthly_ad_budget, "budget")
-    location  = _get(None, "location")  # no direct Lead field for location
-    bhk       = _get(None, "bhk")
-    timeline  = _get(lead.urgency, "timeline")
-    purpose   = _get(None, "purpose")
-    markets   = _get(lead.target_markets, "location")
-
-    # Build source label
-    call_badge = " [via call]" if cd else ""
-
-    message = f"""{score_emoji} {lead.lead_score or 'UNSCORED'} LEAD{call_badge} — {lead.name or 'Unknown'} | {lead.company_name or 'Unknown'}
-
-Budget:    {budget}
-Location:  {location}
-BHK/Size:  {bhk}
-Timeline:  {timeline}
-Purpose:   {purpose}
-Markets:   {markets}
+Budget:    {lead.monthly_ad_budget or 'Not specified'}
+Location:  Not specified
+BHK/Size:  Not specified
+Timeline:  {lead.urgency or 'Not specified'}
+Purpose:   Not specified
+Markets:   {', '.join(lead.target_markets) if lead.target_markets else 'Not specified'}
 Pain:      {lead.pain_point or 'Not specified'}
 📞 Call at: {lead.preferred_call_time or 'No time given'}
 Phone: {lead.phone}""".strip()

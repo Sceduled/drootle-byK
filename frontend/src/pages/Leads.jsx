@@ -56,6 +56,15 @@ export default function Leads() {
 
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
   const [modalInput, setModalInput] = useState('');
+  
+  // Bulk Upload State
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const [pollingInterval, setPollingInterval] = useState(null);
+  
   const navigate = useNavigate();
 
   const fetchLeads = async () => {
@@ -76,8 +85,51 @@ export default function Leads() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
+  }, [pollingInterval]);
+
   const handleExport = () => {
     window.open(`${import.meta.env.VITE_API_URL || '/api'}/dashboard/leads/export`, '_blank');
+  };
+
+  const handleFileUpload = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+    
+    setUploading(true);
+    setUploadError(null);
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    
+    try {
+      const res = await api.post('/dashboard/leads/bulk-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const batchId = res.data.batch_id;
+      
+      const interval = setInterval(async () => {
+        try {
+          const statusRes = await api.get(`/dashboard/leads/bulk-upload/status/${batchId}`);
+          setUploadProgress(statusRes.data);
+          
+          if (statusRes.data.status === 'completed') {
+            clearInterval(interval);
+            setUploading(false);
+            fetchLeads();
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }, 2000);
+      
+      setPollingInterval(interval);
+    } catch (err) {
+      setUploadError(err.response?.data?.detail || err.message);
+      setUploading(false);
+    }
   };
 
   const toggleRow = (e, id) => {
@@ -205,6 +257,17 @@ export default function Leads() {
               className="w-full sm:w-64 bg-card-hover border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-white/20 placeholder-gray-600 transition-all"
             />
           </div>
+          <button 
+            onClick={() => {
+              setShowUploadModal(true);
+              setUploadFile(null);
+              setUploadProgress(null);
+              setUploadError(null);
+            }}
+            className="flex items-center justify-center gap-2 bg-blue-600/20 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-500/30 transition-all shrink-0"
+          >
+            <span className="hidden sm:inline">Upload Leads</span>
+          </button>
           <button 
             onClick={handleExport}
             className="flex items-center justify-center gap-2 bg-white text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-all shrink-0"
@@ -405,6 +468,111 @@ export default function Leads() {
           </div>
         )}
       </div>
+
+      <Modal 
+        isOpen={showUploadModal} 
+        onClose={() => {
+          if (!uploading) setShowUploadModal(false);
+        }}
+      >
+        <div className="p-6 max-w-md w-full bg-background border border-border rounded-2xl shadow-2xl">
+          <h2 className="text-xl font-bold text-foreground mb-4">Bulk Upload Leads</h2>
+          
+          {!uploadProgress ? (
+            <form onSubmit={handleFileUpload} className="space-y-4">
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-sm text-blue-300 mb-2 font-semibold">CSV Format Required</p>
+                <p className="text-xs text-blue-200/70">Required column: <code className="bg-black/30 px-1 py-0.5 rounded">phone</code></p>
+                <p className="text-xs text-blue-200/70">Optional: <code className="bg-black/30 px-1 py-0.5 rounded">name</code>, <code className="bg-black/30 px-1 py-0.5 rounded">email</code>, <code className="bg-black/30 px-1 py-0.5 rounded">source_ad</code></p>
+              </div>
+              
+              <div>
+                <input 
+                  type="file" 
+                  accept=".csv"
+                  onChange={(e) => setUploadFile(e.target.files[0])}
+                  className="block w-full text-sm text-muted
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-500/20 file:text-blue-300
+                    hover:file:bg-blue-500/30
+                    cursor-pointer"
+                  disabled={uploading}
+                />
+              </div>
+              
+              {uploadError && <p className="text-red-400 text-sm mt-2">{uploadError}</p>}
+              
+              <div className="pt-4 flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowUploadModal(false)}
+                  disabled={uploading}
+                  className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-card-hover transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={!uploadFile || uploading}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-black hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  {uploading ? 'Starting...' : 'Upload & Start'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-muted">Status:</span>
+                <span className={`text-sm font-bold uppercase tracking-wider ${uploadProgress.status === 'completed' ? 'text-emerald-400' : 'text-blue-400 animate-pulse'}`}>
+                  {uploadProgress.status}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-card-hover p-4 rounded-xl border border-border">
+                  <p className="text-xs text-muted font-medium mb-1">Total Found</p>
+                  <p className="text-2xl font-bold text-foreground">{uploadProgress.total}</p>
+                </div>
+                <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
+                  <p className="text-xs text-emerald-300 font-medium mb-1">New Created</p>
+                  <p className="text-2xl font-bold text-emerald-400">{uploadProgress.created}</p>
+                </div>
+                <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
+                  <p className="text-xs text-blue-300 font-medium mb-1">Messages Sent</p>
+                  <p className="text-2xl font-bold text-blue-400">{uploadProgress.sent}</p>
+                </div>
+                <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/20">
+                  <p className="text-xs text-orange-300 font-medium mb-1">Duplicates Skipped</p>
+                  <p className="text-2xl font-bold text-orange-400">{uploadProgress.skipped}</p>
+                </div>
+              </div>
+              
+              {uploadProgress.errors?.length > 0 && (
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg max-h-32 overflow-y-auto">
+                  <p className="text-xs text-red-300 font-semibold mb-1">Errors:</p>
+                  <ul className="list-disc list-inside text-xs text-red-200">
+                    {uploadProgress.errors.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                </div>
+              )}
+              
+              {uploadProgress.status === 'completed' && (
+                <div className="pt-4 flex justify-end">
+                  <button 
+                    onClick={() => setShowUploadModal(false)}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-black hover:bg-gray-200 transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       <Modal 
         isOpen={modalConfig.isOpen}

@@ -1,3 +1,6 @@
+# --- DISABLED / UNUSED ---
+# This module is no longer actively imported or used.
+# Kept for reference.
 import logging
 import httpx
 from core.config import settings

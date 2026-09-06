@@ -9,50 +9,58 @@ async def get_system_prompt(lead_summary: str, lead, db) -> str:
     from sqlalchemy import select
     from core.models import Project
     
-    project = None
-    if lead.project_key and lead.project_key != "unknown":
-        result = await db.execute(select(Project).where(Project.project_key == lead.project_key))
-        project = result.scalars().first()
-        
-    if not project:
-        # Fallback project
-        project = Project(
-            project_name="our upcoming properties",
-            area="your area",
-            property_type="property",
-            bhk_or_size="various options",
-            price_range="various budgets",
-            key_features="premium amenities"
-        )
-        
+    # --- MULTI-PROJECT (disabled) ---
+    # project = None
+    # if lead.project_key and lead.project_key != "unknown":
+    #     result = await db.execute(select(Project).where(Project.project_key == lead.project_key))
+    #     project = result.scalars().first()
+    #     
+    # if not project:
+    #     # Fallback project
+    #     project = Project(
+    #         project_name="our upcoming properties",
+    #         area="your area",
+    #         property_type="property",
+    #         bhk_or_size="various options",
+    #         price_range="various budgets",
+    #         key_features="premium amenities"
+    #     )
+    # --- END ---
+
+    # --- HARDCODED SINGLE PROJECT DEPLOYMENT ---
+    from client_config import PROJECT_NAME, AREA, PROPERTY_TYPE, BHK_OR_SIZE, PRICE_RANGE, KEY_FEATURES
+    # --- END ---
+
     persona = AGENT_PERSONA.format(
-        project_name=project.project_name,
-        area=project.area,
-        property_type=project.property_type.capitalize() if project.property_type else "Property",
-        bhk_or_size=project.bhk_or_size,
-        price_range=project.price_range,
-        key_features=project.key_features
+        project_name=PROJECT_NAME,
+        area=AREA,
+        property_type=PROPERTY_TYPE.capitalize() if PROPERTY_TYPE else "Property",
+        bhk_or_size=BHK_OR_SIZE,
+        price_range=PRICE_RANGE,
+        key_features=KEY_FEATURES
     )
 
     questions_text = "\n".join(
         [f"{i+1}. {q}" for i, q in enumerate(QUALIFICATION_QUESTIONS)]
     )
     call_context_str = ""
-    if getattr(lead, "call_partial_data", None):
-        cd = lead.call_partial_data
-        call_context_str = f"""
-CALL CONTEXT — ALREADY CAPTURED:
-The lead had a brief call before this chat.
-Fields already confirmed on the call:
-  Location: {cd.get('location', 'not captured')}
-  Budget: {cd.get('budget', 'not captured')}
-  BHK: {cd.get('bhk', 'not captured')}
-  Timeline: {cd.get('timeline', 'not captured')}
-  Purpose: {cd.get('purpose', 'not captured')}
-
-Only ask for fields showing 'not captured'.
-Do not re-ask anything already confirmed above.
-"""
+    # --- disabled ---
+    # if getattr(lead, "call_partial_data", None):
+    #     cd = lead.call_partial_data
+    #     call_context_str = f"""
+    # CALL CONTEXT — ALREADY CAPTURED:
+    # The lead had a brief call before this chat.
+    # Fields already confirmed on the call:
+    #   Location: {cd.get('location', 'not captured')}
+    #   Budget: {cd.get('budget', 'not captured')}
+    #   BHK: {cd.get('bhk', 'not captured')}
+    #   Timeline: {cd.get('timeline', 'not captured')}
+    #   Purpose: {cd.get('purpose', 'not captured')}
+    #
+    # Only ask for fields showing 'not captured'.
+    # Do not re-ask anything already confirmed above.
+    # """
+    # --- END ---
 
     return f"""
 {persona}
@@ -138,24 +146,31 @@ UNQUALIFIED = not enough info yet
 conv_status values:
 new / qualifying / stalled / awaiting_call /
 post_call / fomo / cold / closed / upsell /
-archived / lost / call_attempted / call_partial /
-call_qualified
-
-IMPORTANT: If the current conv_status is "call_attempted", "call_partial", or "call_qualified",
-do NOT change it unless the lead has explicitly responded via chat and the conversation
-has meaningfully progressed. In that case, set it to "qualifying".
+archived / lost
 """
 
 def get_sequence_message(key: str, project=None, **kwargs) -> tuple[str, str, list]:
     template_data = SEQUENCE_TEMPLATES.get(key, {})
     template = template_data.get("fallback_text", "")
     
-    project_name = project.project_name if project else "our properties"
-    area = project.area if project else "your area"
-    price_range = project.price_range if project else "various budgets"
-    key_features = project.key_features if project else "premium amenities"
-    bhk_or_size = project.bhk_or_size if project else "various options"
-    property_type = project.property_type if project else "property"
+    # --- MULTI-PROJECT (disabled) ---
+    # project_name = project.project_name if project else "our properties"
+    # area = project.area if project else "your area"
+    # price_range = project.price_range if project else "various budgets"
+    # key_features = project.key_features if project else "premium amenities"
+    # bhk_or_size = project.bhk_or_size if project else "various options"
+    # property_type = project.property_type if project else "property"
+    # --- END ---
+
+    # --- HARDCODED SINGLE PROJECT DEPLOYMENT ---
+    from client_config import PROJECT_NAME, AREA, PROPERTY_TYPE, BHK_OR_SIZE, PRICE_RANGE, KEY_FEATURES
+    project_name = PROJECT_NAME
+    area = AREA
+    price_range = PRICE_RANGE
+    key_features = KEY_FEATURES
+    bhk_or_size = BHK_OR_SIZE
+    property_type = PROPERTY_TYPE
+    # --- END ---
     
     fallback_values = {
         "units_sold_this_week": "Several",

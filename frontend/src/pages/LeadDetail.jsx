@@ -378,7 +378,8 @@ export default function LeadDetail() {
                     <p className="text-foreground-muted font-medium">{lead.call_duration_seconds != null ? `${lead.call_duration_seconds}s` : '—'}</p>
                   </div>
                 </div>
-                {lead.call_partial_data && Object.keys(lead.call_partial_data).length > 0 && (
+                {/* --- disabled --- */}
+                {/* {lead.call_partial_data && Object.keys(lead.call_partial_data).length > 0 && (
                   <div className="pt-3 border-t border-border/50 mt-3">
                     <p className="text-muted text-xs mb-2">Data Captured</p>
                     <div className="grid grid-cols-2 gap-y-2 gap-x-4">
@@ -390,7 +391,8 @@ export default function LeadDetail() {
                       ))}
                     </div>
                   </div>
-                )}
+                )} */}
+                {/* --- END --- */}
               </div>
             </div>
           )}

@@ -28,8 +28,9 @@ Estimated time: 3-4 hours
   Add GOOGLE_SHEET_ID to Railway vars
 
 ## Step 5 — WhatsApp connection (30 min)
-  Option A (WAHA): Deploy WAHA Docker service,
-    scan QR, set WAHA_URL + WAHA_API_KEY
+  # --- WAHA RETIRED ---
+  # Option A (WAHA): Deploy WAHA Docker service, 
+  #   scan QR, set WAHA_URL + WAHA_API_KEY
   Option B (Meta/Vobiz): Get WABA ID from client,
     set VOBIZ credentials
   Set WHATSAPP_PROVIDER accordingly

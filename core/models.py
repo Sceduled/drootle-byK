@@ -73,6 +73,7 @@ class Lead(Base):
     last_sequence_at = Column(DateTime(timezone=True), nullable=True)
 
     # Timestamps
+    last_inbound_message_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -2,7 +2,7 @@ import csv
 import io
 import json
 from client_config import SEQUENCE_TEMPLATES
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, case
@@ -105,6 +105,46 @@ async def export_leads(db: AsyncSession = Depends(get_db)):
             yield ",".join(map(escape, row)) + "\n"
 
     return StreamingResponse(iter_csv(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=drootle_leads.csv"})
+
+import uuid
+from core.redis import get_redis
+
+@router.post("/leads/bulk-upload")
+async def bulk_upload_leads(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    batch_id = str(uuid.uuid4())
+    content = await file.read()
+    decoded = content.decode('utf-8').splitlines()
+    reader = csv.DictReader(decoded)
+    
+    rows = []
+    for row in reader:
+        # Standardize keys by lowercasing and stripping
+        clean_row = {k.strip().lower(): v.strip() for k, v in row.items() if k}
+        rows.append(clean_row)
+        
+    redis = get_redis()
+    status_data = {
+        "status": "processing",
+        "total": len(rows),
+        "created": 0,
+        "skipped": 0,
+        "sent": 0,
+        "errors": []
+    }
+    await redis.set(f"bulk_upload:{batch_id}", json.dumps(status_data), ex=86400)
+    
+    arq_pool = await get_arq_pool()
+    await arq_pool.enqueue_job("process_bulk_upload_batch", batch_id, rows)
+    
+    return {"batch_id": batch_id, "message": "Upload started"}
+
+@router.get("/leads/bulk-upload/status/{batch_id}")
+async def bulk_upload_status(batch_id: str):
+    redis = get_redis()
+    data = await redis.get(f"bulk_upload:{batch_id}")
+    if not data:
+        return {"error": "Batch not found"}
+    return json.loads(data)
 
 @router.get("/leads/{lead_id}")
 async def get_lead_detail(lead_id: str, db: AsyncSession = Depends(get_db)):

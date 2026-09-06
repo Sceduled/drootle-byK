@@ -72,8 +72,12 @@ async def new_lead(
     else:
         is_new = True
         
-        project_key = await match_project(payload.source_ad, db)
-        needs_assignment = project_key == "unknown"
+        # --- MULTI-PROJECT (disabled) ---
+        # project_key = await match_project(payload.source_ad, db)
+        # needs_assignment = project_key == "unknown"
+        # --- END ---
+        project_key = None
+        needs_assignment = False
 
         lead = Lead(
             name=payload.name,
@@ -111,9 +115,9 @@ async def new_lead(
             
             if is_within_calling_hours():
                 await arq_pool.enqueue_job(
-                    "fire_outbound_call",
+                    "send_opening_message",
                     str(lead.id),
-                    _job_id=f"call_{lead.id}"
+                    _job_id=f"msg_{lead.id}"
                 )
             else:
                 ist = zoneinfo.ZoneInfo("Asia/Kolkata")
@@ -123,10 +127,10 @@ async def new_lead(
                 )
                 delay = tomorrow_7am - now
                 await arq_pool.enqueue_job(
-                    "fire_outbound_call",
+                    "send_opening_message",
                     str(lead.id),
                     _defer_by=delay,
-                    _job_id=f"call_{lead.id}"
+                    _job_id=f"msg_{lead.id}"
                 )
         except Exception as e:
             logger.error(f"Failed to enqueue ARQ job for lead_id: {lead.id}. Error: {e}")
@@ -158,13 +162,16 @@ async def demo_new_lead(
         lead.name = payload.name
         lead.company_name = payload.company
         lead.email = payload.email
-        lead.call_attempted = False
         lead.opted_out = False
         await db.commit()
     else:
         is_new = True
-        project_key = await match_project(payload.source_ad, db)
-        needs_assignment = project_key == "unknown"
+        # --- MULTI-PROJECT (disabled) ---
+        # project_key = await match_project(payload.source_ad, db)
+        # needs_assignment = project_key == "unknown"
+        # --- END ---
+        project_key = None
+        needs_assignment = False
 
         lead = Lead(
             name=payload.name,
@@ -192,138 +199,21 @@ async def demo_new_lead(
 
     try:
         arq_pool = await get_arq_pool()
-        # Bypassing the curfew check for the demo, fire outbound call instantly
-        logger.info(f"[{lead.id}] Demo form triggered, firing Bolna call instantly.")
+        # Bypassing the curfew check for the demo, send opening message instantly
+        logger.info(f"[{lead.id}] Demo form triggered, sending opening message instantly.")
         await arq_pool.enqueue_job(
-            "fire_outbound_call",
+            "send_opening_message",
             str(lead.id),
-            _job_id=f"call_{lead.id}_{int(datetime.now().timestamp())}"
+            _job_id=f"msg_{lead.id}_{int(datetime.now().timestamp())}"
         )
     except Exception as e:
         logger.error(f"Failed to enqueue ARQ job for demo lead_id: {lead.id}. Error: {e}")
 
     return {"status": "received", "lead_id": str(lead.id)}
 
-@router.post("/bolna-call-outcome")
-async def receive_bolna_outcome(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    signature = request.headers.get("X-Bolna-Signature", "")
-    body = await request.body()
 
-    # Allow bypass when no secret configured (local dev / testing)
-    if settings.BOLNA_WEBHOOK_SECRET:
-        # Strip sha256= prefix if Bolna sends it
-        if signature.startswith("sha256="):
-            signature = signature[7:]
-
-        if not signature:
-            raise HTTPException(status_code=401, detail="Missing signature")
-
-        expected_sig = hmac.new(
-            settings.BOLNA_WEBHOOK_SECRET.encode(),
-            body,
-            hashlib.sha256
-        ).hexdigest()
-
-        if not hmac.compare_digest(signature.lower(), expected_sig.lower()):
-            logger.warning("Invalid Bolna webhook signature")
-            raise HTTPException(status_code=401, detail="Invalid signature")
-    else:
-        logger.warning("BOLNA_WEBHOOK_SECRET not set — skipping signature verification")
-
-    payload = await request.json()
-    logger.info(f"Bolna webhook payload received: {payload}")
-    call_id = payload.get("id") or payload.get("call_id")
-    status = payload.get("status")
-    
-    # Extract duration from telephony_data if available
-    telephony_data = payload.get("telephony_data", {})
-    duration = telephony_data.get("duration", 0) or payload.get("duration_seconds", 0)
-    
-    # Extract lead_id from context_details
-    recipient_data = payload.get("context_details", {}).get("recipient_data", {})
-    lead_id = recipient_data.get("lead_id")
-    
-    # Fallback to old format if context_details isn't there
-    if not lead_id:
-        user_data = payload.get("user_data") or payload.get("meta", {}).get("user_data", {})
-        lead_id = user_data.get("lead_id")
-
-    transcript = payload.get("transcript", "")
-    
-    if not lead_id:
-        logger.warning(f"Bolna webhook ignored: no lead_id found. Payload: {payload}")
-        return {"status": "ignored", "reason": "no lead_id"}
-        
-    result = await db.execute(select(Lead).where(Lead.id == lead_id))
-    lead = result.scalars().first()
-    if not lead:
-        return {"status": "ignored", "reason": "lead not found"}
-        
-    arq_pool = await get_arq_pool()
-
-    # Always store duration if present
-    if duration:
-        lead.call_duration_seconds = int(duration)
-
-    if status in ("no-answer", "busy", "failed"):
-        lead.call_outcome = "no_pickup"
-        lead.conv_status = "call_attempted"
-        await db.commit()
-        await arq_pool.enqueue_job("send_no_pickup_whatsapp", lead_id)
-
-    elif status in ("completed", "call-disconnected"):
-        # Use transcript length to judge if it was a real call, since Bolna sometimes reports 0.0 duration
-        if len(transcript) < 50 and duration < 30:
-            lead.call_outcome = "dropped_early"
-            lead.conv_status = "qualifying"
-            await db.commit()
-            await arq_pool.enqueue_job("send_dropped_call_whatsapp", lead_id)
-        else:
-            # Extract qualification data from transcript
-            from services.gpt import extract_call_transcript_data
-            from services.notifications import notify_sales_qualification
-
-            extracted = await extract_call_transcript_data(transcript)
-            lead.call_partial_data = extracted
-
-            # Check if fully qualified (all 5 fields present)
-            is_qualified = bool(
-                extracted.get("location") and
-                extracted.get("budget") and
-                extracted.get("bhk") and
-                extracted.get("timeline") and
-                extracted.get("purpose")
-            )
-
-            if is_qualified:
-                lead.call_outcome = "qualified"
-                lead.call_qualified = True
-                lead.conv_status = "awaiting_call"
-            else:
-                lead.call_outcome = "partial"
-                lead.conv_status = "qualifying"
-            
-            bolna_summary = payload.get("summary")
-            if bolna_summary:
-                lead.ai_summary = bolna_summary
-
-            await db.commit()
-            
-            if is_qualified:
-                await notify_sales_qualification(lead)
-            else:
-                await arq_pool.enqueue_job("send_partial_call_whatsapp", lead_id)
-            
-            await arq_pool.enqueue_job("generate_lead_summary", lead_id, transcript)
-
-    return {"status": "processed"}
-
-
-@router.get("/whatsapp")
-async def verify_whatsapp(
+@router.get("/meta-inbound")
+async def verify_meta_inbound(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
     hub_challenge: str = Query(None, alias="hub.challenge")
@@ -332,8 +222,11 @@ async def verify_whatsapp(
         return Response(content=hub_challenge, media_type="text/plain")
     raise HTTPException(status_code=403, detail="Verification failed")
 
-@router.post("/whatsapp")
-async def receive_whatsapp(request: Request, db: AsyncSession = Depends(get_db)):
+@router.post("/meta-inbound")
+async def receive_meta_inbound(request: Request, db: AsyncSession = Depends(get_db)):
+    if settings.WHATSAPP_PROVIDER != "meta":
+        return {"status": "ignored", "reason": "Meta is not the active provider"}
+
     signature = request.headers.get("X-Hub-Signature-256")
     if not signature:
         raise HTTPException(status_code=403, detail="Missing signature")
@@ -352,22 +245,78 @@ async def receive_whatsapp(request: Request, db: AsyncSession = Depends(get_db))
 
     payload = await request.json()
     try:
-        entry = payload.get("entry", [])[0]
-        changes = entry.get("changes", [])[0]
-        value = changes.get("value", {})
-        messages = value.get("messages", [])
-        
-        if not messages:
-            return {"status": "ok"}
-            
-        message = messages[0]
-        phone = message.get("from")
-        text_body = message.get("text", {}).get("body", "")
-        
-        if phone and text_body:
-            await handle_inbound_message(phone, text_body, db)
+        entries = payload.get("entry", [])
+        for entry in entries:
+            changes = entry.get("changes", [])
+            for change in changes:
+                value = change.get("value", {})
+                
+                # Check for messages
+                messages = value.get("messages", [])
+                for message in messages:
+                    phone = message.get("from")
+                    msg_id = message.get("id")
+                    timestamp_str = message.get("timestamp")
+                    text_body = message.get("text", {}).get("body", "")
+                    
+                    if phone and text_body:
+                        # Update last_inbound_message_at
+                        try:
+                            norm_phone = normalize_phone(phone)
+                            result = await db.execute(select(Lead).where(Lead.phone == norm_phone))
+                            lead = result.scalars().first()
+                            if lead:
+                                from datetime import datetime, timezone
+                                if timestamp_str:
+                                    lead.last_inbound_message_at = datetime.fromtimestamp(int(timestamp_str), tz=timezone.utc)
+                                else:
+                                    lead.last_inbound_message_at = datetime.now(timezone.utc)
+                                await db.commit()
+                        except Exception as inner_e:
+                            logger.error(f"Failed to update last_inbound_message_at: {inner_e}")
+                            
+                        await handle_inbound_message(phone, text_body)
+
     except Exception as e:
-        logger.error(f"Error processing Meta webhook: {e}")
+        logger.error(f"Error processing Meta inbound webhook: {e}")
+        
+    return {"status": "ok"}
+
+@router.post("/meta-status")
+async def receive_meta_status(request: Request, db: AsyncSession = Depends(get_db)):
+    # Meta sends both to the same webhook usually, but if this is separated:
+    signature = request.headers.get("X-Hub-Signature-256")
+    if signature:
+        body = await request.body()
+        expected_sig = hmac.new(settings.META_APP_SECRET.encode(), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected_sig, signature.replace("sha256=", "")):
+            raise HTTPException(status_code=403, detail="Invalid signature")
+
+    payload = await request.json()
+    try:
+        entries = payload.get("entry", [])
+        for entry in entries:
+            changes = entry.get("changes", [])
+            for change in changes:
+                value = change.get("value", {})
+                
+                statuses = value.get("statuses", [])
+                for status in statuses:
+                    msg_id = status.get("id")
+                    status_type = status.get("status")
+                    recipient_id = status.get("recipient_id")
+                    errors = status.get("errors", [])
+                    
+                    log_msg = f"Message Status: {status_type} for msg_id={msg_id}, recipient={recipient_id}"
+                    if errors:
+                        error_details = ", ".join([f"Code: {e.get('code')}, Title: {e.get('title')}, Details: {e.get('error_data', {}).get('details')}" for e in errors])
+                        log_msg += f" | Errors: {error_details}"
+                        logger.warning(log_msg)
+                    else:
+                        logger.info(log_msg)
+
+    except Exception as e:
+        logger.error(f"Error processing Meta status webhook: {e}")
         
     return {"status": "ok"}
 
@@ -375,8 +324,9 @@ import asyncio
 from fastapi import BackgroundTasks
 from core.database import AsyncSessionLocal
 from services.gpt import process_message
-from services.whatsapp import send_message as wa_send
+from services.whatsapp import send_whatsapp_message as wa_send
 
+# --- WAHA ACTIVE ---
 async def process_waha_message(payload: dict):
     try:
         logger.info(f"Processing WAHA payload: {payload}")
@@ -428,6 +378,9 @@ last_payloads = []
 
 @router.post("/waha")
 async def waha_webhook(request: Request):
+    if settings.WHATSAPP_PROVIDER != "waha":
+        return {"status": "ignored", "reason": "WAHA is not the active provider"}
+
     global last_payloads
     try:
         payload = await request.json()
@@ -445,6 +398,7 @@ async def waha_webhook(request: Request):
 @router.get("/waha/debug")
 async def debug_waha():
     return {"last_payloads": last_payloads}
+# --- END WAHA ---
 
 
 async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: str = None):
@@ -508,7 +462,13 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
                 await log_stage_change(str(lead.id), old_status, "lost", "system", "User opted out (STOP)", db)
                 await db.commit()
                 target_jid = reply_to_jid or norm_phone
-                await wa_send(target_jid, "You have been unsubscribed. You will not receive any further messages.")
+                from workers.tasks import smart_send
+                await smart_send(
+                    target_jid, 
+                    "You have been unsubscribed. You will not receive any further messages.", 
+                    template_name="opt_out_confirmation", 
+                    parameters=[]
+                )
                 return
 
             # Fetch history
@@ -573,8 +533,7 @@ async def handle_inbound_message(phone: str, message_text: str, reply_to_jid: st
             await db.commit()
 
         # Send reply via WhatsApp
-        target_jid = reply_to_jid or norm_phone
-        success = await wa_send(target_jid, reply)
+        success = await wa_send(lead, reply)
         logger.info(f"[{lead.id}] Reply sent: {success}")
         
         arq_pool = await get_arq_pool()
@@ -601,10 +560,12 @@ class VoiceCallbackPayload(BaseModel):
     duration_seconds: Optional[int] = None
     extracted_data: Optional[dict] = None
 
-@router.post("/bolna")
-async def bolna_callback(payload: VoiceCallbackPayload, db: AsyncSession = Depends(get_db)):
-    await handle_voice_callback(payload, db)
-    return {"status": "ok"}
+# --- disabled ---
+# @router.post("/bolna")
+# async def bolna_callback(payload: VoiceCallbackPayload, db: AsyncSession = Depends(get_db)):
+#     await handle_voice_callback(payload, db)
+#     return {"status": "ok"}
+# --- END ---
 
 @router.post("/pipecat")
 async def pipecat_callback(payload: VoiceCallbackPayload, db: AsyncSession = Depends(get_db)):

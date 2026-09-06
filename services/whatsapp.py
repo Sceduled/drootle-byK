@@ -1,146 +1,138 @@
 """
-Service for handling WhatsApp interactions via Meta or OpenWA.
+Service for handling WhatsApp interactions via Meta.
 """
 import httpx
 import logging
 import asyncio
+from datetime import datetime, timezone
 from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-class WhatsAppClient:
-    def __init__(self):
-        self.provider = settings.WHATSAPP_PROVIDER
-        self.meta_token = settings.META_WHATSAPP_TOKEN
-        self.meta_phone_id = settings.META_PHONE_NUMBER_ID
-        self.waha_url = settings.WAHA_URL
-        self.waha_key = settings.WAHA_API_KEY
-        self.waha_session = settings.WAHA_SESSION
+def is_within_service_window(lead) -> bool:
+    if not lead.last_inbound_message_at:
+        return False
+    now = datetime.now(timezone.utc)
+    # Ensure both are timezone aware, or just assume UTC.
+    # The DB returns timezone-aware datetimes if configured properly.
+    if lead.last_inbound_message_at.tzinfo is None:
+        last_inbound = lead.last_inbound_message_at.replace(tzinfo=timezone.utc)
+    else:
+        last_inbound = lead.last_inbound_message_at
+        
+    delta = now - last_inbound
+    return delta.total_seconds() < 24 * 3600
 
-    async def send_message(self, phone: str, message: str) -> bool:
-        if self.provider in ("meta", "vobiz"):
-            return await self._send_meta(phone, message)
-        elif self.provider in ("openwa", "waha"):
-            return await self._send_waha(phone, message)
-        else:
-            logger.error(f"Unknown WhatsApp provider: {self.provider}")
-            return False
+def build_template_payload(template_name: str, parameters: list) -> dict:
+    from client_config import META_TEMPLATE_MAP
+    
+    if not template_name or template_name not in META_TEMPLATE_MAP:
+        logger.error(f"Template {template_name} not found in META_TEMPLATE_MAP")
+        return {}
 
-    async def send_template_message(self, phone: str, template_name: str, parameters: list) -> bool:
-        if self.provider in ("meta", "vobiz"):
-            return await self._send_meta_template(phone, template_name, parameters)
-        elif self.provider in ("openwa", "waha"):
-            # WAHA doesn't strictly need templates, but we can fallback to text if we had the text.
-            # Since we only have template parameters here, we'll just log an error or send a dummy text.
-            logger.error("send_template_message is not supported for WAHA provider directly without fallback text.")
-            return False
-        else:
-            logger.error(f"Unknown WhatsApp provider: {self.provider}")
-            return False
+    mapping = META_TEMPLATE_MAP[template_name]
+    
+    components = []
+    if parameters:
+        param_list = [{"type": "text", "text": str(p)} for p in parameters]
+        components.append({
+            "type": "body",
+            "parameters": param_list
+        })
 
-    async def _send_meta(self, phone: str, message: str) -> bool:
-        url = f"https://graph.facebook.com/v18.0/{self.meta_phone_id}/messages"
-        headers = {
-            "Authorization": f"Bearer {self.meta_token}",
-            "Content-Type": "application/json"
+    return {
+        "type": "template",
+        "template": {
+            "name": mapping["meta_name"],
+            "language": {
+                "code": mapping["language"]
+            },
+            "components": components
         }
-        
-        # Meta API standard expects E.164 format without the '+' sign
-        meta_phone = phone.lstrip('+')
-        
+    }
+
+async def _send_meta(lead, text: str, template_name: str = None, parameters: list = None) -> bool:
+    url = f"https://graph.facebook.com/{settings.META_API_VERSION}/{settings.META_PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {settings.META_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    meta_phone = lead.phone.lstrip('+')
+    
+    if is_within_service_window(lead):
         payload = {
             "messaging_product": "whatsapp",
             "to": meta_phone,
             "type": "text",
             "text": {
-                "body": message
+                "body": text
             }
         }
-        return await self._execute_with_retry(url, headers, payload, "meta")
+    else:
+        payload = build_template_payload(template_name, parameters)
+        if not payload:
+            return False
+        payload["messaging_product"] = "whatsapp"
+        payload["to"] = meta_phone
 
-    async def _send_meta_template(self, phone: str, template_name: str, parameters: list) -> bool:
-        url = f"https://graph.facebook.com/v18.0/{self.meta_phone_id}/messages"
-        # If using vobiz endpoint specifically, we can use their API instead if configured, 
-        # but the prompt said Vobiz uses the Meta Cloud API structure if WABA ID/Token is provided.
-        headers = {
-            "Authorization": f"Bearer {self.meta_token}",
-            "Content-Type": "application/json"
-        }
-        
-        meta_phone = phone.lstrip('+')
-        
-        # Build components
-        components = []
-        if parameters:
-            # Map simple list of strings to Meta's parameters list
-            param_list = [{"type": "text", "text": str(p)} for p in parameters]
-            components.append({
-                "type": "body",
-                "parameters": param_list
-            })
+    backoffs = [1, 2, 4]
+    async with httpx.AsyncClient() as client:
+        for attempt, delay in enumerate(backoffs, 1):
+            try:
+                response = await client.post(url, headers=headers, json=payload, timeout=10.0)
+                if response.status_code in (200, 201):
+                    return True
+                else:
+                    logger.warning(f"WhatsApp Meta API attempt {attempt} failed: {response.status_code} - {response.text}")
+            except Exception as e:
+                logger.warning(f"WhatsApp Meta API attempt {attempt} exception: {e}")
             
-        payload = {
-            "messaging_product": "whatsapp",
-            "to": meta_phone,
-            "type": "template",
-            "template": {
-                "name": template_name,
-                "language": {
-                    "code": "en"
-                },
-                "components": components
-            }
-        }
-        return await self._execute_with_retry(url, headers, payload, "meta_template")
-
-    async def _send_waha(self, phone: str, message: str) -> bool:
-        """Send via WAHA (WhatsApp HTTP API) - correct API format"""
-        base_url = self.waha_url.rstrip('/')
-        url = f"{base_url}/api/sendText"
-        headers = {"Content-Type": "application/json"}
-        if self.waha_key:
-            headers["Authorization"] = f"Bearer {self.waha_key}"
-            headers["X-Api-Key"] = self.waha_key
-
-        # If it already has an '@' (like @lid or @g.us), use it directly
-        clean_phone = phone.lstrip('+')
-        if '@' in clean_phone:
-            chat_id = clean_phone
-        else:
-            chat_id = f"{clean_phone}@c.us"
-
-        payload = {
-            "chatId": chat_id,
-            "text": message,
-            "session": self.waha_session
-        }
-        logger.info(f"Sending WAHA message to {chat_id} via {url}")
-        return await self._execute_with_retry(url, headers, payload, "waha")
-
-    async def _execute_with_retry(self, url: str, headers: dict, payload: dict, provider: str) -> bool:
-        backoffs = [1, 2, 4]
-        async with httpx.AsyncClient() as client:
-            for attempt, delay in enumerate(backoffs, 1):
-                try:
-                    response = await client.post(url, headers=headers, json=payload, timeout=10.0)
-                    if response.status_code in (200, 201):
-                        return True
-                    else:
-                        logger.warning(f"WhatsApp API ({provider}) attempt {attempt} failed: {response.status_code} - {response.text}")
-                except Exception as e:
-                    logger.warning(f"WhatsApp API ({provider}) attempt {attempt} exception: {e}")
+            if attempt < len(backoffs):
+                await asyncio.sleep(delay)
                 
-                if attempt < len(backoffs):
-                    await asyncio.sleep(delay)
-                    
-        logger.error(f"All retries failed for sending WhatsApp message via {provider}")
-        return False
+    logger.error("All retries failed for sending Meta WhatsApp message")
+    return False
 
-# Module-level instance and function for easy importing
-_client = WhatsAppClient()
+async def _send_waha(lead, text: str) -> bool:
+    """Send via WAHA (WhatsApp HTTP API)"""
+    base_url = settings.WAHA_URL.rstrip('/')
+    url = f"{base_url}/api/sendText"
+    headers = {"Content-Type": "application/json"}
 
-async def send_message(phone: str, message: str) -> bool:
-    return await _client.send_message(phone, message)
+    # WAHA expects chatId in format: 919876543210@s.whatsapp.net
+    # Strip leading + if present
+    clean_phone = lead.phone.lstrip('+')
+    chat_id = f"{clean_phone}@s.whatsapp.net"
 
-async def send_template_message(phone: str, template_name: str, parameters: list) -> bool:
-    return await _client.send_template_message(phone, template_name, parameters)
+    payload = {
+        "chatId": chat_id,
+        "text": text,
+        "session": settings.WAHA_SESSION
+    }
+    
+    logger.info(f"Sending WAHA message to {chat_id}")
+    
+    backoffs = [1, 2, 4]
+    async with httpx.AsyncClient() as client:
+        for attempt, delay in enumerate(backoffs, 1):
+            try:
+                response = await client.post(url, headers=headers, json=payload, timeout=10.0)
+                if response.status_code in (200, 201):
+                    return True
+                else:
+                    logger.warning(f"WAHA API attempt {attempt} failed: {response.status_code} - {response.text}")
+            except Exception as e:
+                logger.warning(f"WAHA API attempt {attempt} exception: {e}")
+            
+            if attempt < len(backoffs):
+                await asyncio.sleep(delay)
+                
+    logger.error("All retries failed for sending WAHA message")
+    return False
+
+async def send_whatsapp_message(lead, text: str, template_name: str = None, parameters: list = None) -> bool:
+    if settings.WHATSAPP_PROVIDER == "waha":
+        return await _send_waha(lead, text)
+    else:
+        return await _send_meta(lead, text, template_name, parameters)

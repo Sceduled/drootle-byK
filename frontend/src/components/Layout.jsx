@@ -44,7 +44,7 @@ export default function Layout({ children }) {
     { name: 'Leads', path: '/leads', icon: Users },
     { name: 'Metrics', path: '/metrics', icon: LayoutDashboard },
     { name: 'Sequences', path: '/sequences', icon: ToggleRight },
-    { name: 'Projects', path: '/projects', icon: Building2 },
+    // { name: 'Projects', path: '/projects', icon: Building2 },
     { name: 'Simulator', path: '/simulator', icon: MessageSquareCode },
     { name: 'Live Updates', path: '/live-updates', icon: Radio },
     { name: 'Profile', path: '/profile', icon: User },

@@ -7,6 +7,15 @@ AGENT_NAME = "Priya"
 CLIENT_BRAND = "Bangalore Realtors"
 OWNER_NAME = "Darshaan"
 
+# --- HARDCODED SINGLE PROJECT DEPLOYMENT ---
+PROJECT_NAME = "PLACEHOLDER_PROJECT_NAME"
+AREA = "PLACEHOLDER_AREA"
+PROPERTY_TYPE = "PLACEHOLDER_PROPERTY_TYPE"
+BHK_OR_SIZE = "PLACEHOLDER_BHK_OR_SIZE"
+PRICE_RANGE = "PLACEHOLDER_PRICE_RANGE"
+KEY_FEATURES = "PLACEHOLDER_KEY_FEATURES"
+# --- END ---
+
 AGENT_PERSONA = """
 You are Priya, a calm and helpful property consultant 
 for Bangalore Realtors. You are currently assisting a lead 
@@ -386,4 +395,218 @@ SEQUENCE_TEMPLATES = {
         "variables": ['name'],
         "fallback_text": "Hi {name}! Want me to have our investment advisory team give you a quick call? No pressure - just to see if it makes sense for your situation"
     },
+}
+
+META_TEMPLATE_MAP = {
+    # ─── OPT-OUT CONFIRMATION ───
+    "opt_out_confirmation": {
+        "meta_name": "opt_out_confirmation",
+        "category": "UTILITY",
+        "language": "en",
+        "variable_order": []
+    },
+    
+    # ─── CALL OUTCOMES ───
+    "no_pickup_optout": {
+        "meta_name": "no_pickup_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "project_name", "area"]
+    },
+    "dropped_call_optout": {
+        "meta_name": "dropped_call_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name"]
+    },
+    "partial_call_optout": {
+        "meta_name": "partial_call_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name"]
+    },
+    
+    # ─── FIRST TOUCH & QUALIFICATION ───
+    "first_touch_optout": {
+        "meta_name": "first_touch_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "project_name", "area"]
+    },
+    "qual_nudge_24h_optout": {
+        "meta_name": "qual_nudge_24h_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "area"]
+    },
+
+    # ─── DID NOT PROCEED (DNP) ───
+    "dnp_day1_optout": {
+        "meta_name": "dnp_day1_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name"]
+    },
+    "dnp_day2_optout": {
+        "meta_name": "dnp_day2_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["units_sold_this_week", "project_name"]
+    },
+    "dnp_day3_optout": {
+        "meta_name": "dnp_day3_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name"]
+    },
+    "dnp_day5_optout": {
+        "meta_name": "dnp_day5_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "area"]
+    },
+
+    # ─── CALL REMINDERS ───
+    "call_reminder_lead_optout": {
+        "meta_name": "call_reminder_lead_optout",
+        "category": "UTILITY",
+        "language": "en",
+        "variable_order": ["name", "time", "project_name"]
+    },
+    "call_reminder_sales_optout": {
+        "meta_name": "call_reminder_sales_optout",
+        "category": "UTILITY",
+        "language": "en",
+        "variable_order": ["name", "score", "industry", "budget", "pain_point", "phone"]
+    },
+
+    # ─── POST CALL ───
+    "post_call_day1_optout": {
+        "meta_name": "post_call_day1_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name"]
+    },
+    "post_call_day2_optout": {
+        "meta_name": "post_call_day2_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "bhk_or_size", "area", "project_name"]
+    },
+    "post_call_day3_optout": {
+        "meta_name": "post_call_day3_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "bhk_or_size"]
+    },
+    "post_call_day5_optout": {
+        "meta_name": "post_call_day5_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["pain_point"]
+    },
+    "post_call_day7_optout": {
+        "meta_name": "post_call_day7_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "project_name"]
+    },
+
+    # ─── FOMO ───
+    "fomo_day1_optout": {
+        "meta_name": "fomo_day1_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["units_sold_this_week", "project_name"]
+    },
+    "fomo_day2_optout": {
+        "meta_name": "fomo_day2_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "market_update", "area"]
+    },
+    "fomo_day3_optout": {
+        "meta_name": "fomo_day3_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "current_offer"]
+    },
+
+    # ─── REACTIVATION ───
+    "reactivation_week2_optout": {
+        "meta_name": "reactivation_week2_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "market_update"]
+    },
+    "reactivation_week4_optout": {
+        "meta_name": "reactivation_week4_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "area"]
+    },
+    "reactivation_week6_optout": {
+        "meta_name": "reactivation_week6_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "area"]
+    },
+    "reactivation_week8_optout": {
+        "meta_name": "reactivation_week8_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "bhk_or_size", "project_name"]
+    },
+    "reactivation_week12_optout": {
+        "meta_name": "reactivation_week12_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "project_name"]
+    },
+
+    # ─── CLOSED ONBOARDING ───
+    "closed_day3_optout": {
+        "meta_name": "closed_day3_optout",
+        "category": "UTILITY",
+        "language": "en",
+        "variable_order": ["name", "project_name"]
+    },
+    "closed_day14_optout": {
+        "meta_name": "closed_day14_optout",
+        "category": "UTILITY",
+        "language": "en",
+        "variable_order": ["name"]
+    },
+    "closed_day30_optout": {
+        "meta_name": "closed_day30_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "area"]
+    },
+    "closed_day35_optout": {
+        "meta_name": "closed_day35_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name"]
+    },
+
+    # ─── UPSELL ───
+    "upsell_day1_optout": {
+        "meta_name": "upsell_day1_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "area"]
+    },
+    "upsell_day4_optout": {
+        "meta_name": "upsell_day4_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name", "area"]
+    },
+    "upsell_day7_optout": {
+        "meta_name": "upsell_day7_optout",
+        "category": "MARKETING",
+        "language": "en",
+        "variable_order": ["name"]
+    }
 }
