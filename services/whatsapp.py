@@ -136,3 +136,18 @@ async def send_whatsapp_message(lead, text: str, template_name: str = None, para
         return await _send_waha(lead, text)
     else:
         return await _send_meta(lead, text, template_name, parameters)
+
+# Backwards compatibility for legacy imports (e.g. notifications.py, tasks.py)
+async def send_message(phone: str, text: str) -> bool:
+    class _MockLead:
+        def __init__(self, p):
+            self.phone = p
+            self.last_inbound_message_at = datetime.now(timezone.utc)
+    return await send_whatsapp_message(_MockLead(phone), text)
+
+async def send_template_message(phone: str, template_name: str, parameters: list = None) -> bool:
+    class _MockLead:
+        def __init__(self, p):
+            self.phone = p
+            self.last_inbound_message_at = None
+    return await send_whatsapp_message(_MockLead(phone), "template", template_name, parameters)
