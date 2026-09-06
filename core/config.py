@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     WHATSAPP_PROVIDER: str = "waha"
     WAHA_URL: str = ""
     WAHA_SESSION: str = "default"
+    WAHA_API_KEY: str = ""
     META_ACCESS_TOKEN: str = ""
     META_PHONE_NUMBER_ID: str = ""
     META_BUSINESS_ACCOUNT_ID: str = ""

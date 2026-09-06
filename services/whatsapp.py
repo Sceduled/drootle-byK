@@ -99,6 +99,9 @@ async def _send_waha(lead, text: str) -> bool:
     base_url = settings.WAHA_URL.rstrip('/')
     url = f"{base_url}/api/sendText"
     headers = {"Content-Type": "application/json"}
+    if settings.WAHA_API_KEY:
+        headers["X-Api-Key"] = settings.WAHA_API_KEY
+        headers["Authorization"] = f"Bearer {settings.WAHA_API_KEY}"
 
     # WAHA expects chatId in format: 919876543210@s.whatsapp.net
     # Strip leading + if present
