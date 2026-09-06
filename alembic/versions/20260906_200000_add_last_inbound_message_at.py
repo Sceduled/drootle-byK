@@ -15,7 +15,7 @@ branch_labels = None
 depends_on = None
 
 def upgrade() -> None:
-    op.add_column('leads', sa.Column('last_inbound_message_at', sa.DateTime(timezone=True), nullable=True))
+    op.execute('ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_inbound_message_at TIMESTAMP WITH TIME ZONE')
 
 def downgrade() -> None:
-    op.drop_column('leads', 'last_inbound_message_at')
+    op.execute('ALTER TABLE leads DROP COLUMN IF EXISTS last_inbound_message_at')
